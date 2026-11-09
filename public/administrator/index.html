@@ -221,34 +221,41 @@
       paid: 'To‘langan'
     };
 
-    function unlockSound() {
+    async function unlockSound() {
       try {
-        soundContext = soundContext || new AudioContext();
-        if (soundContext.state === 'suspended') soundContext.resume();
-      } catch (e) {}
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return false;
+        soundContext = soundContext || new AudioCtx();
+        if (soundContext.state !== 'running') await soundContext.resume();
+        return soundContext.state === 'running';
+      } catch (e) {
+        console.warn('Administrator ovozini yoqib bo‘lmadi:', e);
+        return false;
+      }
     }
 
-    function beepNewOrder() {
+    async function beepNewOrder() {
       try {
-        unlockSound();
-        if (!soundContext) return;
-        const now = soundContext.currentTime;
-        [1046, 1318].forEach((frequency, index) => {
-          const start = now + index * 0.24;
+        if (!await unlockSound()) return;
+        const now = soundContext.currentTime + 0.03;
+        [880, 1174, 1568].forEach((frequency, index) => {
+          const start = now + index * 0.22;
           const osc = soundContext.createOscillator();
           const gain = soundContext.createGain();
           osc.type = 'sine';
           osc.frequency.setValueAtTime(frequency, start);
           gain.gain.setValueAtTime(0.0001, start);
-          gain.gain.exponentialRampToValueAtTime(0.95, start + 0.025);
-          gain.gain.setValueAtTime(0.82, start + 0.15);
-          gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.32);
+          gain.gain.exponentialRampToValueAtTime(0.7, start + 0.025);
+          gain.gain.setValueAtTime(0.7, start + 0.14);
+          gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.28);
           osc.connect(gain);
           gain.connect(soundContext.destination);
           osc.start(start);
-          osc.stop(start + 0.34);
+          osc.stop(start + 0.3);
         });
-      } catch (e) {}
+      } catch (e) {
+        console.warn('Administrator yangi buyurtma ovozi xatosi:', e);
+      }
     }
 
     document.addEventListener('pointerdown', unlockSound);
