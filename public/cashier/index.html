@@ -209,7 +209,16 @@
       margin: 6px 0 12px;
     }
     .empty { text-align: center; color: #c0b5a3; padding: 25px; grid-column: 1 / -1; }
+  
+    /* ORZU: each role opens as its own standalone app */
+    .staff-portal-bar { display: none !important; }
   </style>
+
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="ORZU Kassir">
+  <link rel="manifest" href="/cashier-manifest.webmanifest">
+  <link rel="icon" href="/cashier-icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/cashier-icon.svg">
 </head>
 <body>
 
