@@ -4,12 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1,user-scalable=no">
   <meta name="theme-color" content="#090807">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-title" content="Ofitsiant">
-  <link rel="apple-touch-icon" href="/waiter-icon.svg">
+
   <title>ORZU — Ofitsiant</title>
-  <link rel="manifest" href="/waiter-manifest.webmanifest">
-  <link rel="icon" href="/waiter-icon.svg" type="image/svg+xml">
+
   <link rel="stylesheet" href="/style.css">
   <style>
     :root {
@@ -298,7 +295,16 @@
       cursor: pointer;
     }
     .muted { color: #c0b5a3; font-size: 13px; }
+  
+    /* ORZU: each role opens as its own standalone app */
+    .staff-portal-bar { display: none !important; }
   </style>
+
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="ORZU Ofitsiant">
+  <link rel="manifest" href="/waiter-manifest.webmanifest">
+  <link rel="icon" href="/waiter-icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/waiter-icon.svg">
 </head>
 <body>
 
