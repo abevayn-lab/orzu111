@@ -1,0 +1,23 @@
+{
+  "id": "/waiter-app",
+  "name": "ORZU Ofitsiant",
+  "short_name": "Ofitsiant",
+  "start_url": "/waiter/",
+  "scope": "/waiter/",
+  "display": "standalone",
+  "display_override": [
+    "standalone",
+    "minimal-ui"
+  ],
+  "background_color": "#17100a",
+  "theme_color": "#d6a84b",
+  "description": "ORZU Ofitsiant ilovasi",
+  "icons": [
+    {
+      "src": "/waiter-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
