@@ -428,27 +428,6 @@
       }
     }
 
-    async function toggleShift() {
-      if (!W) return;
-      const next = !SHIFT.online;
-      try {
-        const res = await fetch('/api/waiter/presence?id=' + encodeURIComponent(W.id) + '&pin=' + encodeURIComponent(W.pin), {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id: W.id, pin: W.pin, online: next })
-        });
-        const d = await res.json();
-        if (!res.ok) throw new Error(d.error || 'Smena holatini o‘zgartirib bo‘lmadi');
-        SHIFT.online = !!d.online;
-        SHIFT.onlineAt = d.onlineAt || Date.now();
-        SHIFT.offlineAt = d.offlineAt || 0;
-        toast(SHIFT.online ? '✓ Siz hozir ONLAYN holatdasiz' : '✓ Smena yakunlandi (OFLAYN)');
-        draw();
-      } catch (err) {
-        toast('✕ ' + err.message, true);
-      }
-    }
-
     async function load() {
       if (!W) return login();
       try {
@@ -498,9 +477,9 @@
             </div>
             <button class="btn dark" style="padding:8px 12px;font-size:12px" onclick="logout()">Chiqish</button>
           </div>
-          <button type="button" class="shift-toggle-btn ${SHIFT.online ? 'go-offline' : 'go-online'}" onclick="toggleShift()">
-            ${SHIFT.online ? '🔴 Smenani tugatish (Oflayn bo‘lish)' : '🟢 Smenani boshlash (Onlayn bo‘lish)'}
-          </button>
+          <div style="margin-top:12px;padding:11px 13px;border-radius:12px;background:#25190e;border:1px solid #8a642c;color:#ffe39a;font-size:13px;text-align:center;font-weight:700">
+            🔒 Onlayn / Oflayn holatini faqat kassir boshqaradi
+          </div>
         </section>
 
         <button type="button" id="manual-order-button" class="newbtn" data-order-add="0" style="background:linear-gradient(110deg,#3a2a16,#21170f);color:#ffe39a;border:1px solid #d5a94f">
