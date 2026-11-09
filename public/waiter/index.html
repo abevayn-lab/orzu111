@@ -363,20 +363,25 @@
         unlockSound();
         if (!soundContext) return;
         const now = soundContext.currentTime;
-        const osc = soundContext.createOscillator();
-        const gain = soundContext.createGain();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(1046, now);
-        gain.gain.setValueAtTime(0.0001, now);
-        gain.gain.exponentialRampToValueAtTime(0.75, now + 0.02);
-        gain.gain.setValueAtTime(0.65, now + 0.2);
-        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.6);
-        osc.connect(gain);
-        gain.connect(soundContext.destination);
-        osc.start(now);
-        osc.stop(now + 0.62);
+        [1046, 1318].forEach((frequency, index) => {
+          const start = now + index * 0.24;
+          const osc = soundContext.createOscillator();
+          const gain = soundContext.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(frequency, start);
+          gain.gain.setValueAtTime(0.0001, start);
+          gain.gain.exponentialRampToValueAtTime(0.95, start + 0.025);
+          gain.gain.setValueAtTime(0.82, start + 0.15);
+          gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.32);
+          osc.connect(gain);
+          gain.connect(soundContext.destination);
+          osc.start(start);
+          osc.stop(start + 0.34);
+        });
       } catch (e) {}
     }
+    document.addEventListener('pointerdown', unlockSound, { once: false });
+    document.addEventListener('keydown', unlockSound, { once: false });
 
     function toast(m, bad) {
       const t = document.createElement('div');
