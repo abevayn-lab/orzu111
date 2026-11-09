@@ -748,11 +748,12 @@ app.post('/api/admin/menu', adm, (q, s) => {
   s.json({ ok: 1 });
 });
 
-// ADMIN RESET STATS
-app.post('/api/admin/reset-stats', adm, (_q, s) => {
+// ADMIN RESET STATS AND CLEAR ALL ORDERS
+app.post('/api/admin/reset-stats', adm, async (_q, s) => {
+  O.list = [];
   O.statsResetAt = Date.now();
-  save('orders');
-  s.json({ ok: true, statsResetAt: O.statsResetAt, historyPreserved: true });
+  await save('orders');
+  s.json({ ok: true, statsResetAt: O.statsResetAt, ordersCleared: true });
 });
 
 // ADMIN DELETE MENU
