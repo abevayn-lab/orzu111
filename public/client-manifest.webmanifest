@@ -1,0 +1,23 @@
+{
+  "id": "/client-app",
+  "name": "ORZU Mijoz",
+  "short_name": "Mijoz",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": [
+    "standalone",
+    "minimal-ui"
+  ],
+  "background_color": "#17100a",
+  "theme_color": "#d6a84b",
+  "description": "ORZU Mijoz ilovasi",
+  "icons": [
+    {
+      "src": "/client-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
