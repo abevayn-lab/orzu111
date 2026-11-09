@@ -1,0 +1,23 @@
+{
+  "id": "/administrator-app",
+  "name": "ORZU Administrator",
+  "short_name": "Administrator",
+  "start_url": "/administrator/",
+  "scope": "/administrator/",
+  "display": "standalone",
+  "display_override": [
+    "standalone",
+    "minimal-ui"
+  ],
+  "background_color": "#17100a",
+  "theme_color": "#d6a84b",
+  "description": "ORZU Administrator ilovasi",
+  "icons": [
+    {
+      "src": "/administrator-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
