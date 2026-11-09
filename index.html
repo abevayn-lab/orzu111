@@ -241,7 +241,9 @@
   </div>
 
   <script>
-    let T = new URLSearchParams(location.search).get('table') || '1';
+    const QR_TABLE_PARAM = new URLSearchParams(location.search).get('table');
+    const TABLE_LOCKED = QR_TABLE_PARAM !== null && /^[A-Za-z0-9_-]{1,12}$/.test(QR_TABLE_PARAM.trim());
+    let T = TABLE_LOCKED ? QR_TABLE_PARAM.trim() : '1';
     let M = [], C = [], cat = 0, cart = {};
     const f = n => Number(n || 0).toLocaleString('uz-UZ') + " so'm";
 
@@ -304,6 +306,7 @@
     }
 
     function pickTable(num) {
+      if (TABLE_LOCKED) return;
       T = String(num);
       const tn = document.getElementById('tn');
       if (tn) tn.value = T;
@@ -319,7 +322,7 @@
     function op() {
       const L = M.filter(m => cart[m.id]);
       if (!L.length) return;
-      const pills = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(n => 
+      const pills = TABLE_LOCKED ? '' : [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(n => 
         `<button type="button" class="table-pill ${String(n) === String(T) ? 'active' : ''}" data-t="${n}" onclick="pickTable(${n})">Stol ${n}</button>`
       ).join('');
 
@@ -340,16 +343,16 @@
           <b>Jami summa:</b>
           <b class="gold" style="font-size:19px">${f(sum())}</b>
         </div>
-        <label style="display:block;margin-top:14px;color:#e9d5a7;font-size:13px">Stol raqamini tanlang yoki kiriting:</label>
-        <div class="table-pills">${pills}</div>
-        <input id="tn" type="text" placeholder="Stol raqami (masalan: 1, 5, VIP-2)" value="${T}" onchange="T=this.value.trim()">
+        <label style="display:block;margin-top:14px;color:#e9d5a7;font-size:13px">${TABLE_LOCKED ? 'QR-kod orqali belgilangan stol:' : 'Stol raqamini tanlang yoki kiriting:'}</label>
+        ${TABLE_LOCKED ? '' : `<div class="table-pills">${pills}</div>`}
+        <input id="tn" type="text" placeholder="Stol raqami (masalan: 1, 5, VIP-2)" value="${T}" ${TABLE_LOCKED ? 'readonly aria-readonly="true"' : 'onchange="T=this.value.trim()"'}>
         <button class="btn" style="width:100%;margin-top:10px" onclick="send()">Ofitsiantga yuborish</button>
       `;
       md.classList.add('on');
     }
 
     async function send() {
-      const t = document.getElementById('tn').value.trim();
+      const t = TABLE_LOCKED ? T : document.getElementById('tn').value.trim();
       if (!t) return alert('Iltimos, stol raqamini kiriting!');
       const items = Object.entries(cart)
         .filter(([_, qty]) => qty > 0)
