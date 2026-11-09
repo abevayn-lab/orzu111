@@ -1,0 +1,23 @@
+{
+  "id": "/admin-app",
+  "name": "ORZU Admin",
+  "short_name": "Admin",
+  "start_url": "/admin/",
+  "scope": "/admin/",
+  "display": "standalone",
+  "display_override": [
+    "standalone",
+    "minimal-ui"
+  ],
+  "background_color": "#17100a",
+  "theme_color": "#d6a84b",
+  "description": "ORZU Admin ilovasi",
+  "icons": [
+    {
+      "src": "/admin-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
