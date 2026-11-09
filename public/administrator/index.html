@@ -237,6 +237,32 @@
       } catch (e) {}
     }
 
+    function beepNewOrder() {
+      try {
+        unlockSound();
+        if (!soundContext) return;
+        const now = soundContext.currentTime;
+        [1046, 1318].forEach((frequency, index) => {
+          const start = now + index * 0.24;
+          const osc = soundContext.createOscillator();
+          const gain = soundContext.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(frequency, start);
+          gain.gain.setValueAtTime(0.0001, start);
+          gain.gain.exponentialRampToValueAtTime(0.95, start + 0.025);
+          gain.gain.setValueAtTime(0.82, start + 0.15);
+          gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.32);
+          osc.connect(gain);
+          gain.connect(soundContext.destination);
+          osc.start(start);
+          osc.stop(start + 0.34);
+        });
+      } catch (e) {}
+    }
+
+    document.addEventListener('pointerdown', unlockSound);
+    document.addEventListener('keydown', unlockSound);
+
     function signIn() {
       unlockSound();
       key = $('pass').value.trim();
@@ -307,6 +333,9 @@
       $('login').style.display = 'none';
       $('dashboard').style.display = 'block';
       const all = (d.orders || []).slice().sort((a, b) => b.time - a.time);
+      const newIds = new Set(all.filter(o => o.status === 'new').map(o => String(o.id)));
+      if (known !== null && [...newIds].some(id => !known.has(id))) beepNewOrder();
+      known = newIds;
       const fresh = all.filter(o => o.status === 'new');
       $('newCount').textContent = fresh.length + ' ta';
       $('allCount').textContent = all.length + ' ta';
