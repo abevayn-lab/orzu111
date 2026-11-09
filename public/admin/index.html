@@ -5,8 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
   <title>ORZU — Admin</title>
   <meta name="theme-color" content="#111014">
-  <link rel="manifest" href="/admin-manifest.webmanifest">
-  <link rel="icon" href="/admin-icon.svg" type="image/svg+xml">
+
   <link rel="stylesheet" href="/style.css">
   <style>
     :root {
@@ -179,7 +178,16 @@
     .badge.accepted { background: #174e8b; color: #fff; }
     .badge.served { background: #95500b; color: #fff; }
     .badge.paid { background: #1c642b; color: #fff; }
+  
+    /* ORZU: each role opens as its own standalone app */
+    .staff-portal-bar { display: none !important; }
   </style>
+
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="ORZU Admin">
+  <link rel="manifest" href="/admin-manifest.webmanifest">
+  <link rel="icon" href="/admin-icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/admin-icon.svg">
 </head>
 <body>
 
