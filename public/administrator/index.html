@@ -4,12 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1,user-scalable=no">
   <meta name="theme-color" content="#090807">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-title" content="Administrator">
-  <link rel="apple-touch-icon" href="/administrator-icon.svg">
+
   <title>ORZU — Administrator</title>
-  <link rel="manifest" href="/administrator-manifest.webmanifest">
-  <link rel="icon" href="/administrator-icon.svg" type="image/svg+xml">
+
   <link rel="stylesheet" href="/style.css">
   <style>
     :root {
@@ -138,7 +135,16 @@
     }
     .stat-pill span { font-size: 12px; color: #d8c29d; }
     .stat-pill b { display: block; font-size: 22px; color: var(--g2); margin-top: 4px; }
+  
+    /* ORZU: each role opens as its own standalone app */
+    .staff-portal-bar { display: none !important; }
   </style>
+
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="ORZU Administrator">
+  <link rel="manifest" href="/administrator-manifest.webmanifest">
+  <link rel="icon" href="/administrator-icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/administrator-icon.svg">
 </head>
 <body>
 
