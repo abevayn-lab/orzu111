@@ -4,9 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1,user-scalable=no">
   <meta name="theme-color" content="#090807">
-  <meta name="apple-mobile-web-app-capable" content="yes">
+
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="ORZU">
+
   <title>ORZU — Restoran menyusi</title>
   <meta name="description" content="ORZU — Restoran menyusi, ofitsiant, kassir, administrator va admin tizimi" />
   <meta property="og:title" content="ORZU — Restoran menyusi" />
@@ -212,7 +212,16 @@
       color: #1a1005;
       border-color: #ffe18d;
     }
+  
+    /* ORZU: each role opens as its own standalone app */
+    .staff-portal-bar { display: none !important; }
   </style>
+
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="ORZU Mijoz">
+  <link rel="manifest" href="/client-manifest.webmanifest">
+  <link rel="icon" href="/client-icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/client-icon.svg">
 </head>
 <body class="customer-app">
 
