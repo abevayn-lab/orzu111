@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+  <title>ORZU — Admin</title>
+  <meta name="theme-color" content="#111014">
+  <link rel="manifest" href="/admin-manifest.webmanifest">
+  <link rel="icon" href="/admin-icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/style.css">
+  <style>
+    :root {
+      --g: #f4c65e;
+      --g2: #ffe39a;
+      --dark: #120e0a;
+    }
+    * { box-sizing: border-box; }
+    body {
+      background: radial-gradient(ellipse at 50% -18%, #5a3718 0, #21150c 32%, #080706 76%) fixed;
+      color: #fff;
+      font-family: -apple-system, BlinkMacSystemFont, Arial, sans-serif;
+      margin: 0;
+      padding-bottom: 90px;
+    }
+    .staff-portal-bar {
+      background: rgba(18, 14, 10, 0.92);
+      border-bottom: 1px solid rgba(212, 175, 55, 0.3);
+      padding: 6px 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      color: #d8c29d;
+      backdrop-filter: blur(10px);
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+    .staff-links {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .staff-link {
+      color: #ffe39a;
+      text-decoration: none;
+      padding: 3px 8px;
+      border-radius: 6px;
+      background: rgba(255, 227, 154, 0.1);
+      border: 1px solid rgba(212, 175, 55, 0.25);
+      white-space: nowrap;
+      transition: all 0.2s;
+    }
+    .staff-link:hover, .staff-link.active {
+      background: rgba(255, 227, 154, 0.25);
+      border-color: #d4af37;
+    }
+    .hero {
+      text-align: center;
+      padding: 24px 12px 14px;
+    }
+    .hero .crown { font-size: 44px; color: var(--g2); }
+    .hero h1 { font: bold 38px Georgia, serif; margin: 0; color: var(--g2); }
+    .hero p { font-size: 11px; letter-spacing: 5px; color: #fff0c9; margin: 4px 0 0; }
+    .wrap { max-width: 650px; margin: auto; padding: 0 14px; }
+    .stat, .card {
+      background: linear-gradient(125deg, #2b1c10, #17100b 60%, #100c09);
+      border: 1px solid #956b31;
+      box-shadow: 0 8px 25px rgba(0,0,0,0.6);
+      border-radius: 20px;
+      padding: 18px;
+      margin-bottom: 14px;
+    }
+    .profilebar {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 14px;
+      margin-bottom: 14px;
+      border-radius: 22px;
+      border: 1px solid #956b31;
+      background: linear-gradient(125deg, #2b1c10, #100c09);
+    }
+    .profilebadge {
+      width: 60px;
+      height: 60px;
+      border: 2px solid #d8a84b;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      font-size: 32px;
+      color: #ffe39a;
+      background: #25190e;
+    }
+    .home-stats {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      margin: 14px 0;
+    }
+    .home-stat {
+      padding: 14px 8px;
+      text-align: center;
+      border: 1px solid #956b31;
+      border-radius: 18px;
+      background: linear-gradient(125deg, #2b1c10, #100c09);
+    }
+    .home-stat span { display: block; color: #d8c29d; font-size: 12px; min-height: 28px; }
+    .home-stat b { display: block; color: var(--g2); font-size: 19px; margin-top: 4px; }
+    .home-action {
+      width: 100%;
+      border: 0;
+      border-radius: 28px;
+      padding: 16px;
+      margin: 6px 0 16px;
+      background: linear-gradient(110deg, #ffe58d, #f6bd42 55%, #bd7a17);
+      color: #241606;
+      font-weight: 900;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    .btn {
+      border-radius: 28px;
+      padding: 11px 18px;
+      font-weight: 800;
+      border: 1px solid #f5d47f;
+      background: linear-gradient(110deg, #ffe18d, #d58e20);
+      color: #241606;
+      cursor: pointer;
+    }
+    .btn.sm { padding: 6px 12px; font-size: 12px; }
+    .btn.red { background: #7a1f1f; color: #fff; border-color: #a83232; }
+    .quick-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+    #bottomNav {
+      position: fixed;
+      z-index: 10000;
+      left: 0; right: 0; bottom: 0;
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 2px;
+      padding: 8px 4px calc(8px + env(safe-area-inset-bottom));
+      background: rgba(16, 12, 9, 0.96);
+      border-top: 1px solid #956b31;
+      backdrop-filter: blur(12px);
+    }
+    #bottomNav .navitem {
+      border: 0;
+      background: transparent;
+      color: #c8b99f;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      padding: 6px 2px;
+      font-size: 10px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    #bottomNav .navitem b { font-size: 19px; color: #e5bd6d; }
+    #bottomNav .navitem.active { color: #ffe39a; }
+    #bottomNav .navitem.active b { color: #ffe39a; text-shadow: 0 0 12px #e8b94b; }
+    input, select {
+      background: #0f0f12;
+      border: 1px solid #755326;
+      color: #fff;
+      border-radius: 12px;
+      padding: 12px;
+      width: 100%;
+      margin: 6px 0 10px;
+      font-size: 15px;
+    }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { padding: 10px 8px; border-bottom: 1px solid #4a341b; font-size: 13px; text-align: left; }
+    th { color: var(--g2); }
+    .thumb { width: 50px; height: 50px; object-fit: cover; border-radius: 10px; border: 1px solid #755326; }
+    .badge { padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 800; }
+    .badge.new { background: #d4af37; color: #000; }
+    .badge.accepted { background: #174e8b; color: #fff; }
+    .badge.served { background: #95500b; color: #fff; }
+    .badge.paid { background: #1c642b; color: #fff; }
+  </style>
+</head>
+<body>
+
+  <!-- Staff Portal Bar -->
+  <div class="staff-portal-bar">
+    <span><b>ORZU</b> | Admin Boshqaruvi</span>
+    <div class="staff-links">
+      <a href="/" class="staff-link">🍽️ Menyu</a>
+      <a href="/waiter" class="staff-link">👨🏻‍🍳 Ofitsiant</a>
+      <a href="/cashier" class="staff-link">💵 Kassir</a>
+      <a href="/administrator" class="staff-link">📋 Administrator</a>
+    </div>
+  </div>
+
+  <div class="hero">
+    <div class="crown">♛</div>
+    <h1>ORZU</h1>
+    <p>A D M I N · B O S H Q A R U V</p>
+  </div>
+
+  <div class="wrap" id="app"></div>
+  <nav id="bottomNav" aria-label="Admin menyu"></nav>
+
+  <script>
+    let P = localStorage.getItem('ap') || '';
+    let D = { cats: [], menu: [], waiters: [], orders: [], history: [] };
+    let tab = 0;
+    let img = '';
+    let edit = null;
+    let knownOrderIds = null;
+
+    const f = n => Number(n || 0).toLocaleString('uz-UZ') + " so'm";
+    const TABS = ['Bosh sahifa', 'Buyurtmalar', 'Menyu', 'Ofitsiantlar', 'Statistika', 'Bo‘limlar'];
+
+    const H = () => ({ 'Content-Type': 'application/json', 'x-admin': P });
+
+    async function api(u, m = 'GET', b) {
+      const r = await fetch(u, {
+        method: m,
+        headers: H(),
+        body: b ? JSON.stringify(b) : undefined
+      });
+      if (r.status === 401) {
+        localStorage.removeItem('ap');
+        P = '';
+        login();
+        throw new Error('Parol noto‘g‘ri');
+      }
+      return r.json();
+    }
+
+    function login() {
+      bottomNav.style.display = 'none';
+      app.innerHTML = `
+        <div class="stat" style="max-width:380px;margin:30px auto">
+          <h2 class="gold" style="margin-top:0">Admin kirishi</h2>
+          <p style="color:#d8c29d;font-size:13px">Admin parolini kiriting (Standart: <b>admin123</b>):</p>
+          <input id="pw" type="password" placeholder="Parol (admin123)" autofocus>
+          <button class="btn" style="width:100%;margin-top:8px" onclick="doLogin()">Kirish</button>
+        </div>
+      `;
+      document.getElementById('pw')?.addEventListener('keydown', e => {
+        if (e.key === 'Enter') doLogin();
+      });
+    }
+
+    function doLogin() {
+      const pwInput = document.getElementById('pw');
+      if (!pwInput) return;
+      P = pwInput.value.trim();
+      localStorage.setItem('ap', P);
+      load();
+    }
+
+    async function load(bg) {
+      if (!P) return login();
+      try {
+        D = await api('/api/admin/data');
+        bottomNav.style.display = 'grid';
+        if (bg && (tab === 2 || tab === 5 || /^(INPUT|SELECT|TEXTAREA)$/.test((document.activeElement || {}).tagName || ''))) return;
+        render();
+      } catch (e) {
+        // Handled in api()
+      }
+    }
+
+    function render() {
+      const nav = [
+        ['⌂', 'Bosh sahifa', 0],
+        ['▣', 'Buyurtmalar', 1],
+        ['＋', 'Menyu', 2],
+        ['♙', 'Ofitsiantlar', 3],
+        ['▤', 'Statistika', 4]
+      ];
+      bottomNav.innerHTML = nav.map(x => `
+        <button class="navitem ${tab === x[2] ? 'active' : ''}" onclick="tab=${x[2]};render()">
+          <b>${x[0]}</b>
+          <span>${x[1]}</span>
+        </button>
+      `).join('');
+
+      const views = [home, orders, menu, waiters, stats, categories];
+      app.innerHTML = views[tab] ? views[tab]() : home();
+    }
+
+    const tbl = (h, r) => `
+      <div style="overflow-x:auto">
+        <table>
+          <tr>${h.map(x => `<th>${x}</th>`).join('')}</tr>
+          ${r.map(x => `<tr>${x.map(c => `<td>${c}</td>`).join('')}</tr>`).join('')}
+        </table>
+      </div>
+    `;
+
+    function home() {
+      const all = D.history || D.orders || [];
+      const since = Number(D.statsResetAt || 0);
+      const paid = all.filter(o => Number(o.time || 0) >= since && o.status === 'paid');
+      const sum = paid.reduce((n, o) => n + Number(o.total || 0), 0);
+      const fresh = (D.orders || []).filter(o => o.status === 'new').length;
+
+      return `
+        <div class="profilebar">
+          <div class="profilebadge">♛</div>
+          <div>
+            <b style="font-size:18px;color:var(--g2)">ORZU ADMIN</b>
+            <small style="color:#d8c29d;display:block">Restoran to‘liq boshqaruvi</small>
+            <span style="color:#54e56c;font-size:12px;font-weight:700">● Tizim faol</span>
+          </div>
+        </div>
+        <div class="home-stats">
+          <div class="home-stat">
+            <span>To‘langan</span>
+            <b>${paid.length} ta</b>
+          </div>
+          <div class="home-stat">
+            <span>Jami savdo</span>
+            <b style="font-size:16px">${f(sum)}</b>
+          </div>
+          <div class="home-stat">
+            <span>Yangi buyurtma</span>
+            <b>${fresh} ta</b>
+          </div>
+        </div>
+        <button class="home-action" onclick="tab=1;render()">
+          ▣　Buyurtmalarni ko‘rish (${fresh} ta yangi)　›
+        </button>
+        <div class="stat">
+          <h3 class="gold" style="margin-top:0">Tezkor bo‘limlar</h3>
+          <div class="quick-grid">
+            <button class="btn" onclick="tab=2;render()">＋ Menyu boshqaruvi</button>
+            <button class="btn" onclick="tab=3;render()">＋ Ofitsiantlar</button>
+            <button class="btn" onclick="tab=4;render()">▤ To‘liq hisobot</button>
+            <button class="btn" onclick="tab=5;render()">📂 Bo‘limlar (Kategoriyalar)</button>
+          </div>
+        </div>
+      `;
+    }
+
+    function orders() {
+      const list = (D.orders || []).slice().sort((a, b) => b.time - a.time);
+      return `
+        <div class="stat">
+          <h2 class="gold" style="margin-top:0">Buyurtmalar ro‘yxati</h2>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+            <span>Jami: <b>${list.length} ta</b></span>
+            <button class="btn sm" onclick="load()">↻ Yangilash</button>
+          </div>
+          ${list.length ? tbl(
+            ['#', 'Stol', 'Ofitsiant', 'Summa', 'Holat', 'Vaqt'],
+            list.map(o => [
+              o.id,
+              o.table,
+              o.waiterName || '—',
+              f(o.total),
+              `<span class="badge ${o.status}">${o.status}</span>`,
+              new Date(o.time).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' })
+            ])
+          ) : '<p style="text-align:center;color:#c0b5a3;padding:20px">Buyurtmalar mavjud emas</p>'}
+        </div>
+      `;
+    }
+
+    function menu() {
+      return `
+        <div class="stat">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <h3 class="gold" style="margin:0">${edit ? 'Taomni tahrirlash' : 'Yangi taom qo‘shish'}</h3>
+            <button class="btn sm" onclick="tab=5;render()">📂 Bo‘limlar</button>
+          </div>
+          <input id="mn" placeholder="Taom nomi (masalan: Manti)" value="${edit ? edit.name : ''}">
+          <input id="mp" type="number" placeholder="Narxi so‘mda (masalan: 35000)" value="${edit ? edit.price : ''}">
+          <label style="font-size:12px;color:#d8c29d">Bo‘limni tanlang:</label>
+          <select id="mc">
+            ${D.cats.map((c, i) => `<option value="${i}" ${edit && edit.cat == i ? 'selected' : ''}>${c}</option>`).join('')}
+          </select>
+          <input id="mi" placeholder="Rasm URL manzili (ixtiyoriy)" value="${edit && edit.img ? edit.img : ''}">
+          <div style="display:flex;gap:10px;margin-top:10px">
+            <button class="btn" style="flex:1" onclick="saveM()">✓ Saqlash</button>
+            ${edit ? '<button class="btn red" onclick="edit=null;render()">Bekor qilish</button>' : ''}
+          </div>
+        </div>
+        <div class="stat">
+          <h3 class="gold" style="margin-top:0">Mavjud menyu (${D.menu.length} ta)</h3>
+          ${tbl(
+            ['Rasm', 'Nomi', 'Narx', 'Bo‘lim', 'Amallar'],
+            D.menu.map(m => [
+              `<img class="thumb" src="${m.img || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=200'}" onerror="this.src='https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=200'">`,
+              m.name,
+              f(m.price),
+              D.cats[m.cat] || 'Boshqa',
+              `<button class="btn sm" onclick="ed(${m.id})">✎</button> <button class="btn sm red" onclick="delM(${m.id})">✕</button>`
+            ])
+          )}
+        </div>
+      `;
+    }
+
+    async function saveM() {
+      const name = mn.value.trim();
+      const price = Number(mp.value);
+      if (!name || !price) return alert('Nom va narxni kiriting!');
+      await api('/api/admin/menu', 'POST', {
+        id: edit && edit.id,
+        name,
+        price,
+        cat: mc.value,
+        img: mi.value.trim()
+      });
+      edit = null;
+      await load();
+      alert('Taom muvaffaqiyatli saqlandi!');
+    }
+
+    function ed(id) {
+      edit = D.menu.find(m => m.id == id);
+      render();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    async function delM(id) {
+      if (!confirm('Taomni menyudan o‘chirasizmi?')) return;
+      await api('/api/admin/menu/' + id, 'DELETE');
+      await load();
+    }
+
+    function categories() {
+      return `
+        <div class="stat">
+          <h3 class="gold" style="margin-top:0">Yangi menyu bo‘limi qo‘shish</h3>
+          <p style="color:#d8c29d;font-size:13px">Masalan: Milliy taomlar, Ichimliklar, Shirinliklar.</p>
+          <input id="cn" maxlength="40" placeholder="Bo‘lim nomi">
+          <button class="btn" onclick="addCategory()">+ Bo‘lim qo‘shish</button>
+        </div>
+        <div class="stat">
+          <h3 class="gold" style="margin-top:0">Mavjud bo‘limlar</h3>
+          <div style="display:grid;gap:8px">
+            ${D.cats.map((x, i) => `
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #4a341b">
+                <span><b>${i + 1}.</b> ${x}</span>
+                <button class="btn sm red" onclick="removeCategory(${i})">O‘chirish</button>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    async function addCategory() {
+      const name = cn.value.trim();
+      if (!name) return alert('Bo‘lim nomini kiriting!');
+      const r = await api('/api/admin/category', 'POST', { name });
+      if (r.error) return alert(r.error);
+      cn.value = '';
+      await load();
+      alert('Bo‘lim qo‘shildi!');
+    }
+
+    async function removeCategory(i) {
+      const name = D.cats[i];
+      if (!confirm('"' + name + '" bo‘limi o‘chirilsinmi? Undagi taomlar boshqa bo‘limga o‘tkaziladi.')) return;
+      const r = await api('/api/admin/category/' + i, 'DELETE');
+      if (r.error) return alert(r.error);
+      await load();
+    }
+
+    function waiters() {
+      const clock = t => t ? new Date(t).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' }) : '—';
+      return `
+        <div class="stat">
+          <h3 class="gold" style="margin-top:0">Ofitsiant qo‘shish</h3>
+          <input id="wn" placeholder="Ofitsiant ismi (masalan: Nodirbek)">
+          <input id="wp" placeholder="PIN kod (masalan: 3333)">
+          <button class="btn" onclick="addW()">+ Ofitsiantni saqlash</button>
+        </div>
+        <div class="stat">
+          <h3 class="gold" style="margin-top:0">Ofitsiantlar ro‘yxati (${D.waiters.length} ta)</h3>
+          ${tbl(
+            ['Ism', 'PIN', 'Holati', 'Ish boshladi', 'Amal', ''],
+            D.waiters.map(w => {
+              const sh = w.shift || {};
+              return [
+                w.name,
+                w.pin,
+                `<span class="badge ${sh.online ? 'accepted' : 'served'}">${sh.online ? 'ONLAYN' : 'OFLAYN'}</span>`,
+                clock(sh.onlineAt),
+                `<button class="btn sm" onclick="toggleWaiter(${w.id})">${sh.online ? 'Oflayn qilish' : 'Onlayn qilish'}</button>`,
+                `<button class="btn sm red" onclick="delW(${w.id})">✕</button>`
+              ];
+            })
+          )}
+        </div>
+      `;
+    }
+
+    async function addW() {
+      const name = wn.value.trim();
+      const pin = wp.value.trim();
+      if (!name || !pin) return alert('Ism va PIN kodni kiriting!');
+      await api('/api/admin/waiter', 'POST', { name, pin });
+      wn.value = '';
+      wp.value = '';
+      await load();
+      alert('Ofitsiant qo‘shildi!');
+    }
+
+    async function delW(id) {
+      if (!confirm('Ofitsiantni o‘chirasizmi?')) return;
+      await api('/api/admin/waiter/' + id, 'DELETE');
+      await load();
+    }
+
+    async function toggleWaiter(id) {
+      const w = (D.waiters || []).find(x => String(x.id) === String(id));
+      if (!w) return;
+      const next = !(w.shift && w.shift.online);
+      try {
+        await api('/api/admin/waiter-presence', 'POST', { waiterId: id, online: next });
+        await load();
+        alert(w.name + (next ? ' Onlayn bo‘ldi' : ' Oflayn bo‘ldi'));
+      } catch (e) {
+        alert(e.message);
+      }
+    }
+
+    function stats() {
+      const since = Number(D.statsResetAt || 0);
+      const orders = (D.history || D.orders || []).filter(o => Number(o.time || 0) >= since && o.status === 'paid');
+      const totalSum = orders.reduce((n, o) => n + Number(o.total || 0), 0);
+      return `
+        <div class="stat">
+          <h2 class="gold" style="margin-top:0">Statistika va Hisobot</h2>
+          <div class="home-stats">
+            <div class="home-stat">
+              <span>To‘langan cheklar</span>
+              <b>${orders.length} ta</b>
+            </div>
+            <div class="home-stat">
+              <span>Jami tushum</span>
+              <b style="font-size:16px">${f(totalSum)}</b>
+            </div>
+            <div class="home-stat">
+              <span>O‘rtacha chek</span>
+              <b style="font-size:16px">${f(orders.length ? Math.round(totalSum / orders.length) : 0)}</b>
+            </div>
+          </div>
+          <button class="btn red" style="width:100%;margin-top:14px" onclick="clearStats()">
+            Statistikani noldan boshlash
+          </button>
+        </div>
+      `;
+    }
+
+    async function clearStats() {
+      if (!confirm('Statistika hisoblagichini noldan boshlaysizmi? Tarix saqlanib qoladi.')) return;
+      await api('/api/admin/reset-stats', 'POST', {});
+      await load();
+      alert('Statistika yangilandi!');
+    }
+
+    load();
+    setInterval(() => {
+      if (P) load(true).catch(() => {});
+    }, 5000);
+  </script>
+</body>
+</html>

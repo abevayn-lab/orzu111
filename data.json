@@ -1,0 +1,219 @@
+{
+  "CFG": {
+    "cats": [
+      "1-chi taom",
+      "2-chi taom",
+      "Salat va ichimliklar",
+      "Boshqa"
+    ],
+    "menu": [
+      {
+        "id": 101,
+        "name": "Qo'y go'shtli sho'rva",
+        "price": 32000,
+        "cat": 0,
+        "img": "https://images.unsplash.com/photo-1547592166-23ac45744acd?w=600&auto=format&fit=crop&q=80",
+        "hidden": false
+      },
+      {
+        "id": 102,
+        "name": "Uyg'ur lag'mon",
+        "price": 38000,
+        "cat": 0,
+        "img": "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=600&auto=format&fit=crop&q=80",
+        "hidden": false
+      },
+      {
+        "id": 103,
+        "name": "Mastava (qatiq bilan)",
+        "price": 28000,
+        "cat": 0,
+        "img": "https://images.unsplash.com/photo-1604152135912-04a022e23696?w=600&auto=format&fit=crop&q=80",
+        "hidden": false
+      },
+      {
+        "id": 104,
+        "name": "Chuchvara sho'rva",
+        "price": 30000,
+        "cat": 0,
+        "img": "https://images.unsplash.com/photo-1550547660-d9450f859349?w=600&auto=format&fit=crop&q=80",
+        "hidden": false
+      },
+      {
+        "id": 201,
+        "name": "To'y oshi / Palov (maxsus)",
+        "price": 42000,
+        "cat": 1,
+        "img": "https://images.unsplash.com/photo-1633964913295-ceb43826e7c9?w=600&auto=format&fit=crop&q=80",
+        "hidden": false
+      },
+      {
+        "id": 202,
+        "name": "Manti (go'shtli, 5 dona)",
+        "price": 35000,
+        "cat": 1,
+        "img": "https://images.unsplash.com/photo-1541696432-82c6da8ce7bf?w=600&auto=format&fit=crop&q=80",
+        "hidden": false
+      },
+      {
+        "id": 203,
+        "name": "Qiyma shashlik (2 dona)",
+        "price": 24000,
+        "cat": 1,
+        "img": "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=600&auto=format&fit=crop&q=80",
+        "hidden": false
+      },
+      {
+        "id": 204,
+        "name": "Qozon kabob (qo'y go'shti)",
+        "price": 58000,
+        "cat": 1,
+        "img": "https://images.unsplash.com/photo-1544025162-d76694265947?w=600&auto=format&fit=crop&q=80",
+        "hidden": false
+      },
+      {
+        "id": 301,
+        "name": "Achchiq-chuchuk salati",
+        "price": 14000,
+        "cat": 2,
+        "img": "https://images.unsplash.com/photo-1540420773420-3366772f4999?w=600&auto=format&fit=crop&q=80",
+        "hidden": false
+      },
+      {
+        "id": 302,
+        "name": "Bahor salati",
+        "price": 16000,
+        "cat": 2,
+        "img": "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=600&auto=format&fit=crop&q=80",
+        "hidden": false
+      },
+      {
+        "id": 303,
+        "name": "Choynakda ko'k choy",
+        "price": 5000,
+        "cat": 2,
+        "img": "https://images.unsplash.com/photo-1576092768241-dec231879fc3?w=600&auto=format&fit=crop&q=80",
+        "hidden": false
+      },
+      {
+        "id": 304,
+        "name": "Choynakda qora choy (limon bilan)",
+        "price": 7000,
+        "cat": 2,
+        "img": "https://images.unsplash.com/photo-1544787219-7f47ccb76574?w=600&auto=format&fit=crop&q=80",
+        "hidden": false
+      },
+      {
+        "id": 305,
+        "name": "Coca-Cola 1.5L",
+        "price": 16000,
+        "cat": 2,
+        "img": "https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=600&auto=format&fit=crop&q=80",
+        "hidden": false
+      },
+      {
+        "id": 306,
+        "name": "Muzdek Ayron (ko'katli)",
+        "price": 8000,
+        "cat": 2,
+        "img": "https://images.unsplash.com/photo-1550583724-b2692b85b150?w=600&auto=format&fit=crop&q=80",
+        "hidden": false
+      },
+      {
+        "id": 401,
+        "name": "Tandir patir non",
+        "price": 8000,
+        "cat": 3,
+        "img": "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=600&auto=format&fit=crop&q=80",
+        "hidden": false
+      },
+      {
+        "id": 402,
+        "name": "Go'shtli tandir somsa",
+        "price": 12000,
+        "cat": 3,
+        "img": "https://images.unsplash.com/photo-1601050690597-df0568f70950?w=600&auto=format&fit=crop&q=80",
+        "hidden": false
+      }
+    ],
+    "waiters": [
+      {
+        "id": 1,
+        "name": "Ofitsiant 1",
+        "pin": "1111"
+      },
+      {
+        "id": 2,
+        "name": "Ofitsiant 2",
+        "pin": "2222"
+      }
+    ]
+  },
+  "O": {
+    "list": [
+      {
+        "id": 11,
+        "table": "5",
+        "waiter": 1,
+        "waiterName": "Ofitsiant 1",
+        "items": [
+          {
+            "name": "To'y oshi / Palov (maxsus)",
+            "price": 42000,
+            "img": "https://images.unsplash.com/photo-1633964913295-ceb43826e7c9?w=600&auto=format&fit=crop&q=80",
+            "qty": 2
+          },
+          {
+            "name": "Achchiq-chuchuk salati",
+            "price": 14000,
+            "img": "https://images.unsplash.com/photo-1540420773420-3366772f4999?w=600&auto=format&fit=crop&q=80",
+            "qty": 1
+          }
+        ],
+        "total": 98000,
+        "status": "paid",
+        "time": 1794245115826,
+        "paidAt": 1794245131720,
+        "paidBy": "Kassir Nodir",
+        "paymentMethod": "Naqd"
+      }
+    ],
+    "seq": 11,
+    "nextWaiterIndex": 1,
+    "dayClosures": {
+      "waiters": {},
+      "cashier": 0,
+      "administrator": 0,
+      "admin": 0
+    },
+    "waiterShifts": {
+      "1": {
+        "online": true,
+        "onlineAt": 1794245105732,
+        "offlineAt": 0,
+        "sessions": [
+          {
+            "start": 1794245105732,
+            "end": 0
+          }
+        ]
+      },
+      "2": {
+        "online": true,
+        "onlineAt": 1794245105732,
+        "offlineAt": 0,
+        "sessions": [
+          {
+            "start": 1794245105732,
+            "end": 0
+          }
+        ]
+      }
+    },
+    "cashierSettings": {
+      "printerIp": "192.168.1.51"
+    },
+    "printJobs": [],
+    "statsResetAt": 0
+  }
+}

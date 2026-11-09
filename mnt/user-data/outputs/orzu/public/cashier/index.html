@@ -1,0 +1,569 @@
+<!doctype html>
+<html lang="uz">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#090807">
+  <title>ORZU — Kassir</title>
+  <link rel="stylesheet" href="/style.css">
+  <style>
+    :root {
+      --g: #f4c65e;
+      --g2: #ffe39a;
+      --dark: #120e0a;
+      --border: #8a642c;
+    }
+    * { box-sizing: border-box; }
+    body {
+      background: radial-gradient(ellipse at 50% -12%, #4a3014 0, #17100a 36%, #080706 78%) fixed;
+      color: #fff;
+      font-family: -apple-system, BlinkMacSystemFont, Arial, sans-serif;
+      margin: 0;
+      padding-bottom: 50px;
+    }
+    .staff-portal-bar {
+      background: rgba(18, 14, 10, 0.92);
+      border-bottom: 1px solid rgba(212, 175, 55, 0.3);
+      padding: 6px 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      color: #d8c29d;
+      backdrop-filter: blur(10px);
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+    .staff-links {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .staff-link {
+      color: #ffe39a;
+      text-decoration: none;
+      padding: 3px 8px;
+      border-radius: 6px;
+      background: rgba(255, 227, 154, 0.1);
+      border: 1px solid rgba(212, 175, 55, 0.25);
+      white-space: nowrap;
+      transition: all 0.2s;
+    }
+    .staff-link:hover, .staff-link.active {
+      background: rgba(255, 227, 154, 0.25);
+      border-color: #d4af37;
+    }
+    .wrap {
+      max-width: 900px;
+      margin: auto;
+      padding: 16px;
+    }
+    .card, .section, .stat {
+      background: linear-gradient(125deg, #2b1c10 0%, #17100b 60%, #100c09 100%);
+      border: 1px solid #956b31;
+      border-radius: 20px;
+      box-shadow: 0 8px 25px rgba(0,0,0,0.6);
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .header h1 {
+      margin: 0;
+      color: var(--g2);
+      font-size: 26px;
+    }
+    .btn {
+      background: linear-gradient(110deg, #ffe18d, #d58e20);
+      color: #241606;
+      border: 1px solid #ffe18d;
+      border-radius: 12px;
+      padding: 10px 16px;
+      font-weight: 800;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    .btn.dark {
+      background: #25190e;
+      color: #ffdc8c;
+      border-color: #8a642c;
+    }
+    .hidden { display: none !important; }
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    .stat-box {
+      background: #1e150d;
+      border: 1px solid #755326;
+      border-radius: 16px;
+      padding: 12px 10px;
+      text-align: center;
+    }
+    .stat-box span { font-size: 12px; color: #d8c29d; }
+    .stat-box b { display: block; font-size: 20px; color: var(--g2); margin-top: 5px; }
+    .tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    .tab {
+      flex: 1;
+      padding: 12px;
+      background: #1c140c;
+      color: #c7bba9;
+      border: 1px solid #755326;
+      border-radius: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      text-align: center;
+    }
+    .tab.on {
+      background: linear-gradient(110deg, #ffe18d, #d58e20);
+      color: #241606;
+      border-color: #ffe18d;
+    }
+    .ordersgrid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+      gap: 14px;
+    }
+    .order {
+      background: #1e150d;
+      border: 1px solid #755326;
+      border-radius: 18px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .orderhead {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .badge {
+      font-size: 11px;
+      padding: 4px 8px;
+      border-radius: 10px;
+      background: #a83232;
+      color: #fff;
+      font-weight: 800;
+    }
+    .badge.paid { background: #2f8a5a; }
+    .items {
+      margin: 12px 0;
+      border-top: 1px dashed #523b1f;
+      border-bottom: 1px dashed #523b1f;
+      padding: 8px 0;
+      font-size: 13px;
+    }
+    .item {
+      display: flex;
+      justify-content: space-between;
+      padding: 4px 0;
+    }
+    .total {
+      display: flex;
+      justify-content: space-between;
+      font-size: 16px;
+      font-weight: 900;
+      color: var(--g2);
+      margin: 8px 0 12px;
+    }
+    .actions {
+      display: flex;
+      gap: 8px;
+      flex-direction: column;
+    }
+    .waiter-shift-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px;
+      border-bottom: 1px solid #4a341b;
+      gap: 10px;
+    }
+    .waiter-shift-meta {
+      font-size: 12px;
+      color: #c7bba9;
+      margin-top: 3px;
+    }
+    input {
+      width: 100%;
+      padding: 12px;
+      background: #0b0907;
+      border: 1px solid #8a642c;
+      color: #fff;
+      border-radius: 12px;
+      font-size: 15px;
+      margin: 6px 0 12px;
+    }
+    .empty { text-align: center; color: #c0b5a3; padding: 25px; grid-column: 1 / -1; }
+  </style>
+</head>
+<body>
+
+  <!-- Staff Portal Bar -->
+  <div class="staff-portal-bar">
+    <span><b>ORZU</b> | Kassir paneli</span>
+    <div class="staff-links">
+      <a href="/" class="staff-link">🍽️ Menyu</a>
+      <a href="/waiter" class="staff-link">👨🏻‍🍳 Ofitsiant</a>
+      <a href="/administrator" class="staff-link">📋 Administrator</a>
+      <a href="/admin" class="staff-link">⚙️ Admin</a>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <!-- Login Screen -->
+    <div id="login" class="card" style="max-width:420px;margin:50px auto">
+      <h2 style="color:var(--g2);margin-top:0">Kassir kirishi</h2>
+      <p style="color:#d8c29d;font-size:13px">Kassa parolini kiriting (Standart: <b>admin123</b>):</p>
+      <input type="password" id="pass" placeholder="Parol (admin123)" autofocus>
+      <button class="btn" style="width:100%" onclick="signIn()">Kassaga kirish</button>
+    </div>
+
+    <!-- App Screen -->
+    <div id="app" class="hidden">
+      <div class="header">
+        <div>
+          <h1>ORZU Kassasi</h1>
+          <small style="color:#d8c29d">To‘lovlarni qabul qilish va chek chiqarish</small>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn dark" onclick="toggleSettings()">⚙ Sozlamalar</button>
+          <button class="btn dark" onclick="logout()">Chiqish</button>
+        </div>
+      </div>
+
+      <!-- Settings Panel -->
+      <div id="settings" class="card hidden">
+        <h3 style="color:var(--g2);margin-top:0">Printer sozlamalari</h3>
+        <label style="font-size:13px;color:#d8c29d">Chek printer IP manzili:</label>
+        <input type="text" id="printerIp" value="192.168.1.51" placeholder="192.168.1.51">
+        <div style="display:flex;gap:8px">
+          <button class="btn" onclick="saveSettings()">IP manzilni saqlash</button>
+          <button class="btn dark" onclick="toggleSettings()">Yopish</button>
+        </div>
+      </div>
+
+      <!-- Stats -->
+      <div class="stats-row">
+        <div class="stat-box">
+          <span>Kutilmoqda</span>
+          <b id="pendingCount">0 ta</b>
+        </div>
+        <div class="stat-box">
+          <span>To‘langan</span>
+          <b id="paidCount">0 ta</b>
+        </div>
+        <div class="stat-box">
+          <span>Jami tushum</span>
+          <b id="paidSum" style="font-size:16px">0 so‘m</b>
+        </div>
+      </div>
+
+      <!-- Waiters Shifts -->
+      <div class="section">
+        <h3 style="color:var(--g2);margin:0 0 10px">Ofitsiantlar smenasi (Onlayn/Oflayn)</h3>
+        <div id="waiterShiftsList"></div>
+      </div>
+
+      <!-- Orders View -->
+      <div class="tabs">
+        <button id="pendingTab" class="tab on" onclick="setTab('pending')">⏳ To‘lov kutilayotganlar</button>
+        <button id="paidTab" class="tab" onclick="setTab('paid')">✓ To‘langanlar</button>
+      </div>
+
+      <div style="display:flex;gap:10px;margin-bottom:14px">
+        <input type="text" id="search" placeholder="Stol yoki ofitsiant bo‘yicha qidirish..." oninput="render()" style="margin:0">
+        <button class="btn dark" onclick="refresh()">↻ Yangilash</button>
+      </div>
+
+      <div id="orders" class="ordersgrid"></div>
+
+      <button class="btn" style="width:100%;margin-top:20px;padding:15px;background:linear-gradient(110deg,#ffe18d,#d58e20)" onclick="closeDay()">
+        🌙 Kunlik hisobotni yopish (yangi kunga o‘tish)
+      </button>
+    </div>
+  </div>
+
+  <script>
+    let key = localStorage.getItem('orzu_cashier_key') || '';
+    let DATA = { orders: [], waiters: [], settings: { printerIp: '192.168.1.51' } };
+    let tab = 'pending';
+    let busy = false;
+
+    const $ = id => document.getElementById(id);
+    const money = n => Number(n || 0).toLocaleString('uz-UZ') + " so‘m";
+    const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+    function headers() {
+      return { 'Content-Type': 'application/json', 'x-cashier': key };
+    }
+
+    async function api(url, method = 'GET', body) {
+      const r = await fetch(url, {
+        method,
+        headers: headers(),
+        body: body ? JSON.stringify(body) : undefined
+      });
+      let d = {};
+      try { d = await r.json(); } catch (e) {}
+      if (r.status === 401) {
+        logout(false);
+        throw new Error('Kassir paroli noto‘g‘ri');
+      }
+      if (!r.ok) throw new Error(d.error || 'Xatolik yuz berdi');
+      return d;
+    }
+
+    async function signIn() {
+      key = $('pass').value.trim();
+      if (!key) return alert('Parolni kiriting');
+      try {
+        await refresh();
+        localStorage.setItem('orzu_cashier_key', key);
+        $('login').classList.add('hidden');
+        $('app').classList.remove('hidden');
+      } catch (e) {
+        key = '';
+        alert(e.message);
+      }
+    }
+
+    $('pass')?.addEventListener('keydown', e => {
+      if (e.key === 'Enter') signIn();
+    });
+
+    function logout(clear = true) {
+      if (clear) localStorage.removeItem('orzu_cashier_key');
+      key = '';
+      $('app').classList.add('hidden');
+      $('login').classList.remove('hidden');
+    }
+
+    async function refresh() {
+      if (!key) return;
+      DATA = await api('/api/cashier/data');
+      if ($('printerIp')) $('printerIp').value = DATA.settings?.printerIp || '192.168.1.51';
+      updateStats();
+      renderWaiters();
+      render();
+    }
+
+    function updateStats() {
+      const paid = DATA.orders.filter(o => o.status === 'paid');
+      $('pendingCount').textContent = DATA.orders.filter(o => o.status !== 'paid').length + ' ta';
+      $('paidCount').textContent = paid.length + ' ta';
+      $('paidSum').textContent = money(paid.reduce((s, o) => s + Number(o.total || 0), 0));
+    }
+
+    function renderWaiters() {
+      const el = $('waiterShiftsList');
+      if (!el) return;
+      const list = DATA.waiters || [];
+      const clock = t => t ? new Date(t).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' }) : '—';
+      el.innerHTML = list.length ? list.map(w => {
+        const sh = w.shift || {};
+        return `
+          <div class="waiter-shift-row">
+            <div>
+              <b>${esc(w.name)}</b>
+              <div class="waiter-shift-meta">
+                <span style="color:${sh.online ? '#54e56c' : '#ff9d85'};font-weight:700">● ${sh.online ? 'ONLAYN' : 'OFLAYN'}</span>
+                · Ish boshladi: ${clock(sh.onlineAt)}
+              </div>
+            </div>
+            <button class="btn ${sh.online ? 'dark' : ''}" style="padding:7px 12px;font-size:12px" onclick="toggleWaiter(${Number(w.id)})">
+              ${sh.online ? 'Oflayn qilish' : 'Onlayn qilish'}
+            </button>
+          </div>
+        `;
+      }).join('') : '<div class="empty">Ofitsiantlar mavjud emas</div>';
+    }
+
+    async function toggleWaiter(id) {
+      const w = (DATA.waiters || []).find(x => String(x.id) === String(id));
+      if (!w) return;
+      const next = !(w.shift && w.shift.online);
+      try {
+        const d = await api('/api/cashier/waiter-presence', 'POST', { waiterId: id, online: next });
+        await refresh();
+        alert(w.name + (next ? ' Onlayn bo‘ldi' : ' Oflayn bo‘ldi'));
+      } catch (e) {
+        alert('Xatolik: ' + e.message);
+      }
+    }
+
+    function setTab(t) {
+      tab = t;
+      $('pendingTab').classList.toggle('on', t === 'pending');
+      $('paidTab').classList.toggle('on', t === 'paid');
+      render();
+    }
+
+    function render() {
+      if (!$('orders')) return;
+      const q = ($('search')?.value || '').trim().toLowerCase();
+      const list = DATA.orders.filter(o => 
+        (tab === 'paid' ? o.status === 'paid' : o.status !== 'paid') &&
+        (!q || [o.id, o.table, o.waiterName].join(' ').toLowerCase().includes(q))
+      );
+      $('orders').innerHTML = list.length ? list.map(card).join('') : '<div class="empty">Bu bo‘limda buyurtma yo‘q</div>';
+    }
+
+    function card(o) {
+      return `
+        <article class="order">
+          <div>
+            <div class="orderhead">
+              <b style="color:var(--g2)">#${esc(o.id)} · Stol ${esc(o.table)}</b>
+              <span class="badge ${o.status === 'paid' ? 'paid' : ''}">${o.status === 'paid' ? 'To‘langan' : 'Kutilmoqda'}</span>
+            </div>
+            <div style="color:#d8c29d;font-size:12px;margin:5px 0">
+              Ofitsiant: <b>${esc(o.waiterName || '—')}</b> · ${new Date(o.time).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' })}
+            </div>
+            <div class="items">
+              ${(o.items || []).map(i => `
+                <div class="item">
+                  <span>${esc(i.name)} × ${Number(i.qty)}</span>
+                  <b>${money(Number(i.price) * Number(i.qty))}</b>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+          <div>
+            <div class="total">
+              <span>JAMI:</span>
+              <span>${money(o.total)}</span>
+            </div>
+            <div class="actions">
+              ${o.status === 'paid' ? `
+                <button class="btn dark" onclick="reprint(${Number(o.id)})">🖨 Chekni qayta chiqarish</button>
+              ` : `
+                <button class="btn" onclick="markPaid(${Number(o.id)})">✓ To‘landi & Chek chiqarish</button>
+                <button class="btn dark" onclick="reprint(${Number(o.id)})">Oldindan hisob cheki</button>
+              `}
+            </div>
+            ${o.status === 'paid' ? `
+              <div style="font-size:11px;color:#54e56c;margin-top:8px">
+                To‘landi: ${new Date(o.paidAt || o.time).toLocaleTimeString('uz-UZ')} (${esc(o.paymentMethod || 'Naqd')})
+              </div>
+            ` : ''}
+          </div>
+        </article>
+      `;
+    }
+
+    async function printTicket(orderId) {
+      // 1. Queue to server print jobs (safe across HTTPS and mobile devices)
+      try {
+        await api('/api/cashier/print', 'POST', { orderId, printerIp: $('printerIp')?.value });
+      } catch (err) {
+        console.warn('Server print queue error:', err);
+      }
+
+      // 2. Also try direct local bridge if running on same desktop
+      try {
+        const printerIp = $('printerIp')?.value.trim() || DATA.settings?.printerIp || '192.168.1.51';
+        const order = DATA.orders.find(x => Number(x.id) === orderId);
+        if (order) {
+          await fetch('http://127.0.0.1:17891/print', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ printerIp, order })
+          });
+        }
+      } catch (e) {
+        // Ignored as server queue handles it
+      }
+    }
+
+    async function markPaid(id) {
+      if (busy) return;
+      const o = DATA.orders.find(x => Number(x.id) === id);
+      if (!o) return;
+      if (!confirm('Stol ' + o.table + ' · ' + money(o.total) + ' to‘lovini qabul qilasizmi?')) return;
+      busy = true;
+      try {
+        const d = await api('/api/cashier/pay', 'POST', {
+          orderId: id,
+          cashierName: 'Kassir',
+          paymentMethod: 'Naqd'
+        });
+        DATA.orders = DATA.orders.map(x => Number(x.id) === id ? d.order : x);
+        updateStats();
+        render();
+        await printTicket(id);
+        alert('To‘lov saqlandi va chek printer navbatiga yuborildi!');
+      } catch (e) {
+        alert(e.message);
+      } finally {
+        busy = false;
+      }
+    }
+
+    async function reprint(id) {
+      try {
+        await printTicket(id);
+        alert('Chek printer navbatiga yuborildi!');
+      } catch (e) {
+        alert('Chek yuborilmadi: ' + e.message);
+      }
+    }
+
+    async function closeDay() {
+      if (busy) return;
+      if (!confirm('KUNLIK HISOBOTNI YOPAMIZMI?\n\nKassa ekrani yangi kunga tozalanadi, barcha buyurtmalar tarixi esa Admin panelida saqlanib qoladi.')) return;
+      busy = true;
+      try {
+        const d = await api('/api/cashier/close-day', 'POST', {});
+        await refresh();
+        alert('Kun yopildi!\nTo‘langan: ' + d.summary.orders + ' ta\nJami: ' + money(d.summary.total));
+      } catch (e) {
+        alert('Kun yopilmadi: ' + e.message);
+      } finally {
+        busy = false;
+      }
+    }
+
+    async function saveSettings() {
+      try {
+        const ip = $('printerIp').value.trim();
+        const d = await api('/api/cashier/settings', 'POST', { printerIp: ip });
+        DATA.settings = d.settings;
+        alert('Printer IP manzili saqlandi: ' + ip);
+        toggleSettings();
+      } catch (e) {
+        alert(e.message);
+      }
+    }
+
+    function toggleSettings() {
+      $('settings').classList.toggle('hidden');
+    }
+
+    if (key) {
+      refresh().then(() => {
+        $('login').classList.add('hidden');
+        $('app').classList.remove('hidden');
+      }).catch(() => {});
+    }
+
+    setInterval(() => {
+      if (key && !document.hidden) refresh().catch(() => {});
+    }, 4500);
+  </script>
+</body>
+</html>

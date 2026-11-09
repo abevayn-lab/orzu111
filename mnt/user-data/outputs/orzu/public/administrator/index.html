@@ -1,0 +1,335 @@
+<!doctype html>
+<html lang="uz">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1,user-scalable=no">
+  <meta name="theme-color" content="#090807">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Administrator">
+  <link rel="apple-touch-icon" href="/administrator-icon.svg">
+  <title>ORZU — Administrator</title>
+  <link rel="manifest" href="/administrator-manifest.webmanifest">
+  <link rel="icon" href="/administrator-icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/style.css">
+  <style>
+    :root {
+      --g: #f4c65e;
+      --g2: #ffe39a;
+      --dark: #120e0a;
+    }
+    * { box-sizing: border-box; }
+    body {
+      background: radial-gradient(ellipse at 50% -18%, #5a3718 0, #21150c 32%, #080706 76%) fixed;
+      color: #fff;
+      font-family: -apple-system, BlinkMacSystemFont, Arial, sans-serif;
+      margin: 0;
+      padding-bottom: 50px;
+    }
+    .staff-portal-bar {
+      background: rgba(18, 14, 10, 0.92);
+      border-bottom: 1px solid rgba(212, 175, 55, 0.3);
+      padding: 6px 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      color: #d8c29d;
+      backdrop-filter: blur(10px);
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+    .staff-links {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .staff-link {
+      color: #ffe39a;
+      text-decoration: none;
+      padding: 3px 8px;
+      border-radius: 6px;
+      background: rgba(255, 227, 154, 0.1);
+      border: 1px solid rgba(212, 175, 55, 0.25);
+      white-space: nowrap;
+      transition: all 0.2s;
+    }
+    .staff-link:hover, .staff-link.active {
+      background: rgba(255, 227, 154, 0.25);
+      border-color: #d4af37;
+    }
+    .brand {
+      text-align: center;
+      padding: 24px 12px 18px;
+    }
+    .brand .crown { font-size: 44px; color: var(--g2); }
+    .brand h1 { font: bold 38px Georgia, serif; margin: 0; color: var(--g2); }
+    .brand p { font-size: 11px; letter-spacing: 5px; color: #fff0c9; margin: 4px 0 0; }
+    .wrap { max-width: 650px; margin: auto; padding: 0 14px; }
+    .card, .section, .order, .login {
+      background: linear-gradient(125deg, #2b1c10 0%, #17100b 60%, #100c09 100%);
+      border: 1px solid #956b31;
+      border-radius: 20px;
+      box-shadow: 0 8px 25px rgba(0,0,0,0.6);
+      padding: 16px;
+      margin-bottom: 14px;
+    }
+    .login { max-width: 400px; margin: 40px auto; }
+    .btn {
+      background: linear-gradient(110deg, #ffe18d, #d58e20);
+      color: #241606;
+      border: 1px solid #ffe18d;
+      border-radius: 14px;
+      padding: 12px 18px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+    .btn.dark {
+      background: #25190e;
+      color: #ffdc8c;
+      border-color: #8a642c;
+    }
+    .btn.wide { width: 100%; }
+    input {
+      width: 100%;
+      padding: 14px;
+      background: #0b0907;
+      border: 1px solid #8a642c;
+      color: #fff;
+      border-radius: 12px;
+      font-size: 16px;
+      margin: 10px 0 14px;
+    }
+    .order { padding: 14px; border-radius: 18px; }
+    .top, .bottom { display: flex; justify-content: space-between; align-items: center; }
+    .oid { font-weight: 800; color: var(--g2); font-size: 16px; }
+    .waiter { color: var(--g); font-size: 13px; font-weight: 700; margin: 8px 0; }
+    .items { margin: 8px 0; font-size: 14px; line-height: 1.5; color: #e4ddd2; }
+    .itemline { display: flex; align-items: center; gap: 10px; margin: 6px 0; }
+    .foodpic, .foodfallback {
+      width: 50px;
+      height: 44px;
+      border-radius: 10px;
+      border: 1px solid #987035;
+      background: #25190e;
+      flex-shrink: 0;
+      object-fit: cover;
+    }
+    .foodfallback { display: grid; place-items: center; font-size: 20px; }
+    .status {
+      border-radius: 20px;
+      padding: 5px 10px;
+      font-size: 12px;
+      font-weight: 800;
+      background: #70252b;
+    }
+    .status.accepted { background: #174e8b; }
+    .status.served { background: #95500b; }
+    .status.paid { background: #1c642b; }
+    .empty { text-align: center; color: #c0b5a3; padding: 25px; }
+    .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+    .stat-pill {
+      background: #1c140c;
+      border: 1px solid #755326;
+      border-radius: 16px;
+      padding: 12px;
+      text-align: center;
+    }
+    .stat-pill span { font-size: 12px; color: #d8c29d; }
+    .stat-pill b { display: block; font-size: 22px; color: var(--g2); margin-top: 4px; }
+  </style>
+</head>
+<body>
+
+  <!-- Staff Portal Bar -->
+  <div class="staff-portal-bar">
+    <span><b>ORZU</b> | Administrator</span>
+    <div class="staff-links">
+      <a href="/" class="staff-link">🍽️ Menyu</a>
+      <a href="/waiter" class="staff-link">👨🏻‍🍳 Ofitsiant</a>
+      <a href="/cashier" class="staff-link">💵 Kassir</a>
+      <a href="/admin" class="staff-link">⚙️ Admin</a>
+    </div>
+  </div>
+
+  <header class="brand">
+    <div class="crown">♛</div>
+    <h1>ORZU</h1>
+    <p>A D M I N I S T R A T O R · Z A L</p>
+  </header>
+
+  <main class="wrap">
+    <!-- Login Screen -->
+    <section class="login" id="login">
+      <h2 style="color:var(--g2);margin-top:0">Administrator kirishi</h2>
+      <p style="color:#d8c29d;font-size:13px">Administrator parolini kiriting (Standart: <b>admin123</b>):</p>
+      <input type="password" id="pass" placeholder="Parol (admin123)" autofocus>
+      <button class="btn wide" onclick="signIn()">Tizimga kirish</button>
+      <p id="err" style="color:#f87171;font-size:13px;margin-top:10px;text-align:center"></p>
+    </section>
+
+    <!-- Dashboard Screen -->
+    <div id="dashboard" style="display:none">
+      <div class="card" style="display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <b style="font-size:18px;color:var(--g2)">Zal nazorati</b>
+          <small style="display:block;color:#d8c29d">Barcha ofitsiantlar va buyurtmalar</small>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn dark" onclick="refresh()">↻ Yangilash</button>
+          <button class="btn dark" onclick="logout()">Chiqish</button>
+        </div>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-pill">
+          <span>Yangi buyurtmalar</span>
+          <b id="newCount">0</b>
+        </div>
+        <div class="stat-pill">
+          <span>Faol buyurtmalar</span>
+          <b id="allCount">0</b>
+        </div>
+      </div>
+
+      <section class="section">
+        <h3 style="color:var(--g2);margin:0 0 12px">🔔 Yangi kelgan buyurtmalar</h3>
+        <div id="newOrders"></div>
+      </section>
+
+      <section class="section">
+        <h3 style="color:var(--g2);margin:0 0 12px">📋 Barcha buyurtmalar ro‘yxati</h3>
+        <div id="orders"></div>
+      </section>
+
+      <button class="btn wide" style="margin-top:10px" onclick="closeDay()">
+        🌙 Administrator kunlik hisobotini yopish
+      </button>
+    </div>
+  </main>
+
+  <script>
+    let key = localStorage.getItem('orzu_administrator_key') || '';
+    let known = null, busy = false, soundContext = null;
+
+    const $ = id => document.getElementById(id);
+    const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const f = n => Number(n || 0).toLocaleString('uz-UZ') + " so'm";
+
+    const statusName = {
+      new: 'Yangi buyurtma',
+      accepted: 'Qabul qilindi',
+      served: 'Tayyorlanmoqda',
+      paid: 'To‘langan'
+    };
+
+    function unlockSound() {
+      try {
+        soundContext = soundContext || new AudioContext();
+        if (soundContext.state === 'suspended') soundContext.resume();
+      } catch (e) {}
+    }
+
+    function signIn() {
+      unlockSound();
+      key = $('pass').value.trim();
+      if (!key) return;
+      localStorage.setItem('orzu_administrator_key', key);
+      refresh();
+    }
+
+    $('pass')?.addEventListener('keydown', e => {
+      if (e.key === 'Enter') signIn();
+    });
+
+    function logout() {
+      if (!confirm('Administrator hisobidan chiqmoqchimisiz?')) return;
+      localStorage.removeItem('orzu_administrator_key');
+      key = '';
+      $('dashboard').style.display = 'none';
+      $('login').style.display = 'block';
+    }
+
+    async function refresh() {
+      if (!key || busy) return;
+      busy = true;
+      try {
+        const r = await fetch('/api/administrator/data', {
+          headers: { 'x-administrator': key }
+        });
+        const d = await r.json();
+        if (!r.ok) {
+          $('err').textContent = d.error === 'auth' ? 'Parol noto‘g‘ri kiritildi' : (d.error || 'Kirish xatosi');
+          logout();
+          return;
+        }
+        render(d);
+      } catch (e) {
+        $('err').textContent = 'Server bilan aloqa uzildi';
+      } finally {
+        busy = false;
+      }
+    }
+
+    function card(o) {
+      return `
+        <article class="order">
+          <div class="top">
+            <span class="oid">#${esc(o.id)} · Stol ${esc(o.table)}</span>
+            <span class="time">${o.time ? new Date(o.time).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' }) : ''}</span>
+          </div>
+          <div class="waiter">👤 MAS’UL OFITSIANT: ${esc(o.waiterName || 'Noma’lum')}</div>
+          <div class="items">
+            ${(o.items || []).map(i => `
+              <div class="itemline">
+                ${i.img ? `<img class="foodpic" src="${esc(i.img)}" onerror="this.outerHTML='<span class=foodfallback>🍽️</span>'">` : '<span class="foodfallback">🍽️</span>'}
+                <span style="flex:1">${esc(i.name)} × ${esc(i.qty)}</span>
+                <b>${f(Number(i.price || 0) * Number(i.qty || 1))}</b>
+              </div>
+            `).join('')}
+          </div>
+          <div class="bottom">
+            <span class="status ${esc(o.status)}">${esc(statusName[o.status] || o.status)}</span>
+            <b style="color:var(--g2);font-size:16px">${f(o.total)}</b>
+          </div>
+        </article>
+      `;
+    }
+
+    function render(d) {
+      $('login').style.display = 'none';
+      $('dashboard').style.display = 'block';
+      const all = (d.orders || []).slice().sort((a, b) => b.time - a.time);
+      const fresh = all.filter(o => o.status === 'new');
+      $('newCount').textContent = fresh.length + ' ta';
+      $('allCount').textContent = all.length + ' ta';
+      $('newOrders').innerHTML = fresh.length ? fresh.map(card).join('') : '<div class="empty">Yangi buyurtmalar yo‘q</div>';
+      $('orders').innerHTML = all.length ? all.map(card).join('') : '<div class="empty">Hozircha buyurtmalar yo‘q</div>';
+    }
+
+    async function closeDay() {
+      if (!confirm('Barcha buyurtmalarni Administrator ekranidan yopasizmi? Ular Admin panelida to‘liq saqlanib qoladi.')) return;
+      try {
+        const r = await fetch('/api/administrator/close-day', {
+          method: 'POST',
+          headers: { 'x-administrator': key }
+        });
+        if (!r.ok) throw new Error('Kunni yopib bo‘lmadi');
+        render({ orders: [] });
+        alert('Administrator ekrani tozalandi. Tarix Admin panelida saqlandi.');
+      } catch (e) {
+        alert(e.message);
+      }
+    }
+
+    if (key) refresh();
+    else {
+      $('login').style.display = 'block';
+      $('dashboard').style.display = 'none';
+    }
+
+    setInterval(refresh, 3500);
+  </script>
+</body>
+</html>

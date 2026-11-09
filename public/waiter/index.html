@@ -1,0 +1,749 @@
+<!doctype html>
+<html lang="uz">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1,user-scalable=no">
+  <meta name="theme-color" content="#090807">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Ofitsiant">
+  <link rel="apple-touch-icon" href="/waiter-icon.svg">
+  <title>ORZU — Ofitsiant</title>
+  <link rel="manifest" href="/waiter-manifest.webmanifest">
+  <link rel="icon" href="/waiter-icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/style.css">
+  <style>
+    :root {
+      --g: #f4c65e;
+      --g2: #ffe39a;
+      --muted: #c0b5a3;
+    }
+    * { box-sizing: border-box; }
+    body {
+      background: radial-gradient(ellipse at 50% -15%, #523315 0, #17100a 40%, #080706 80%) fixed;
+      color: #fff;
+      font-family: -apple-system, BlinkMacSystemFont, Arial, sans-serif;
+      margin: 0;
+      padding-bottom: 40px;
+    }
+    .staff-portal-bar {
+      background: rgba(18, 14, 10, 0.92);
+      border-bottom: 1px solid rgba(212, 175, 55, 0.3);
+      padding: 6px 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      color: #d8c29d;
+      backdrop-filter: blur(10px);
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+    .staff-links {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .staff-link {
+      color: #ffe39a;
+      text-decoration: none;
+      padding: 3px 8px;
+      border-radius: 6px;
+      background: rgba(255, 227, 154, 0.1);
+      border: 1px solid rgba(212, 175, 55, 0.25);
+      white-space: nowrap;
+      transition: all 0.2s;
+    }
+    .staff-link:hover, .staff-link.active {
+      background: rgba(255, 227, 154, 0.25);
+      border-color: #d4af37;
+    }
+    .hero {
+      text-align: center;
+      padding: 20px 12px 14px;
+    }
+    .hero .crown {
+      font-size: 40px;
+      color: var(--g2);
+    }
+    .hero h1 {
+      font: bold 38px Georgia, serif;
+      letter-spacing: 3px;
+      color: var(--g2);
+      margin: 0;
+    }
+    .hero p {
+      font-size: 11px;
+      letter-spacing: 5px;
+      color: #fff0c9;
+      margin: 4px 0 0;
+    }
+    .wrap {
+      max-width: 620px;
+      margin: auto;
+      padding: 0 12px 25px;
+    }
+    .profile, .stat, .order, .section, .login {
+      background: linear-gradient(125deg, #2b1c10 0%, #17100b 60%, #100c09 100%);
+      border: 1px solid #956b31;
+      border-radius: 20px;
+      box-shadow: 0 8px 25px rgba(0,0,0,0.6);
+    }
+    .profile {
+      padding: 16px;
+      margin-bottom: 14px;
+    }
+    .profile-top {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .avatar {
+      width: 62px;
+      height: 62px;
+      border-radius: 50%;
+      border: 2px solid var(--g);
+      display: grid;
+      place-items: center;
+      font-size: 32px;
+      background: #302012;
+      flex-shrink: 0;
+    }
+    .profile-info { flex: 1; }
+    .profile-info b { font-size: 18px; color: var(--g2); }
+    .profile-info small { display: block; color: #c0b5a3; margin-top: 3px; font-size: 13px; }
+    .online-tag {
+      font-size: 12px;
+      font-weight: 800;
+      margin-top: 5px;
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 12px;
+    }
+    .online-tag.on { background: rgba(84, 229, 108, 0.2); color: #54e56c; border: 1px solid #54e56c; }
+    .online-tag.off { background: rgba(255, 157, 133, 0.2); color: #ff9d85; border: 1px solid #ff9d85; }
+    .shift-toggle-btn {
+      width: 100%;
+      margin-top: 12px;
+      padding: 13px;
+      border-radius: 14px;
+      font-weight: 800;
+      font-size: 15px;
+      cursor: pointer;
+      border: 1px solid #d4af37;
+      transition: all 0.2s;
+    }
+    .shift-toggle-btn.go-online {
+      background: linear-gradient(110deg, #2b7a38, #184c22);
+      color: #bbf7d0;
+      border-color: #4ade80;
+    }
+    .shift-toggle-btn.go-offline {
+      background: linear-gradient(110deg, #42201b, #26110f);
+      color: #fca5a5;
+      border-color: #f87171;
+    }
+    .stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin: 12px 0;
+    }
+    .stat {
+      padding: 14px;
+      text-align: center;
+    }
+    .stat span { font-size: 13px; color: #eee; }
+    .stat b { display: block; color: var(--g2); font-size: 20px; margin-top: 6px; }
+    .newbtn {
+      position: sticky;
+      top: 38px;
+      z-index: 30;
+      width: 100%;
+      border: 0;
+      border-radius: 26px;
+      padding: 16px;
+      background: linear-gradient(110deg, #ffe58d, #f6bd42 55%, #bd7a17);
+      color: #241606;
+      font-size: 16px;
+      font-weight: 900;
+      margin: 6px 0 16px;
+      box-shadow: 0 5px 22px rgba(189, 124, 23, 0.4);
+      cursor: pointer;
+    }
+    .section {
+      padding: 16px;
+      margin: 14px 0;
+    }
+    .section-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin: 12px 3px 8px;
+    }
+    .section-title h2 { font-size: 18px; margin: 0; color: var(--g2); }
+    .order {
+      padding: 14px;
+      margin: 10px 0;
+      border-radius: 18px;
+    }
+    .top, .bottom {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+    .oid { font-weight: 800; color: var(--g2); font-size: 16px; }
+    .time { font-size: 12px; color: #c7bba9; }
+    .items {
+      font-size: 14px;
+      line-height: 1.6;
+      color: #e4ddd2;
+      margin: 10px 0;
+    }
+    .itemline {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 7px 0;
+    }
+    .foodpic {
+      width: 54px;
+      height: 48px;
+      object-fit: cover;
+      border-radius: 10px;
+      border: 1px solid #987035;
+      background: #25190e;
+      flex-shrink: 0;
+    }
+    .foodfallback {
+      width: 54px;
+      height: 48px;
+      border-radius: 10px;
+      border: 1px solid #987035;
+      background: #25190e;
+      display: grid;
+      place-items: center;
+      font-size: 22px;
+      flex-shrink: 0;
+    }
+    .status {
+      border-radius: 20px;
+      padding: 5px 10px;
+      font-size: 12px;
+      font-weight: 800;
+      background: #70252b;
+    }
+    .status.accepted { background: #174e8b; }
+    .status.served { background: #95500b; }
+    .status.paid { background: #1c642b; }
+    .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+    .actions button, .btn {
+      border: 1px solid #f5d47f;
+      background: linear-gradient(110deg, #ffe18d, #d58e20);
+      color: #201405;
+      border-radius: 12px;
+      padding: 10px 14px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+    .actions .dark {
+      background: #25190e;
+      color: #ffdc8c;
+      border-color: #8a642c;
+    }
+    .empty { text-align: center; color: #c0b5a3; padding: 25px; }
+    .login {
+      max-width: 400px;
+      margin: 30px auto;
+      padding: 22px;
+      border-radius: 20px;
+    }
+    .login input, .login select, .input {
+      width: 100%;
+      padding: 14px;
+      border: 1px solid #8a642c;
+      background: #0b0907;
+      color: white;
+      border-radius: 12px;
+      margin: 10px 0;
+      font-size: 16px;
+    }
+    .modal {
+      display: block;
+      position: fixed;
+      inset: 0;
+      background: rgba(9, 8, 7, 0.94);
+      z-index: 99;
+      overflow-y: auto;
+      padding: 16px;
+    }
+    .modalbox { max-width: 480px; margin: 20px auto; }
+    .menuitem {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 2px;
+      border-bottom: 1px solid #5c4524;
+      align-items: center;
+    }
+    .qty button {
+      background: #3b2a16;
+      color: #ffe18d;
+      border: 1px solid #8a642c;
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    .muted { color: #c0b5a3; font-size: 13px; }
+  </style>
+</head>
+<body>
+
+  <!-- Top Staff Portal Switcher -->
+  <div class="staff-portal-bar">
+    <span><b>ORZU</b> | Ofitsiant</span>
+    <div class="staff-links">
+      <a href="/" class="staff-link">🍽️ Menyu</a>
+      <a href="/cashier" class="staff-link">💵 Kassir</a>
+      <a href="/administrator" class="staff-link">📋 Administrator</a>
+      <a href="/admin" class="staff-link">⚙️ Admin</a>
+    </div>
+  </div>
+
+  <header class="hero">
+    <div class="crown">♛</div>
+    <h1>ORZU</h1>
+    <p>O F I T S I A N T · I L O V A S I</p>
+  </header>
+
+  <main class="wrap" id="app"></main>
+
+  <script>
+    let W = JSON.parse(localStorage.w || 'null');
+    let O = [];
+    let SHIFT = { online: true, onlineAt: 0, offlineAt: 0 };
+    let knownNewIds = new Set();
+    let firstOrdersLoad = true;
+    let soundContext = null;
+    let MENU = [], MCATS = [], SEL = {}, TGT = 0;
+
+    const f = n => Number(n || 0).toLocaleString('uz-UZ') + " so'm";
+    const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+    const ST = {
+      new: 'Yangi buyurtma',
+      accepted: 'Qabul qilindi',
+      served: 'Tayyorlanmoqda',
+      paid: 'To‘langan'
+    };
+
+    const NX = {
+      new: ['accepted', 'Qabul qilish'],
+      accepted: ['served', 'Taom berildi']
+    };
+
+    function unlockSound() {
+      try {
+        soundContext = soundContext || new AudioContext();
+        if (soundContext.state === 'suspended') soundContext.resume();
+      } catch (e) {}
+    }
+
+    function beep() {
+      try {
+        unlockSound();
+        if (!soundContext) return;
+        const now = soundContext.currentTime;
+        const osc = soundContext.createOscillator();
+        const gain = soundContext.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(1046, now);
+        gain.gain.setValueAtTime(0.0001, now);
+        gain.gain.exponentialRampToValueAtTime(0.75, now + 0.02);
+        gain.gain.setValueAtTime(0.65, now + 0.2);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.6);
+        osc.connect(gain);
+        gain.connect(soundContext.destination);
+        osc.start(now);
+        osc.stop(now + 0.62);
+      } catch (e) {}
+    }
+
+    function toast(m, bad) {
+      const t = document.createElement('div');
+      t.textContent = m;
+      t.style.cssText = 'position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:100000;max-width:90%;padding:13px 20px;border-radius:14px;font-weight:700;font-size:15px;color:' + (bad ? '#fff' : '#241606') + ';background:' + (bad ? '#bd2431' : '#ffe39a') + ';box-shadow:0 6px 24px rgba(0,0,0,0.6)';
+      document.body.appendChild(t);
+      setTimeout(() => t.remove(), 3500);
+    }
+
+    function login() {
+      fetch('/api/waiters').then(r => r.json()).then(waiters => {
+        const root = document.getElementById('app');
+        if (!root) return;
+        root.innerHTML = `
+          <section class="login">
+            <h2 style="color:#ffe39a;margin-top:0">Ofitsiant kirishi</h2>
+            <p class="muted">Ofitsiantni tanlang va PIN kodni kiriting (Standart PIN: 1111 yoki 2222):</p>
+            <select id="ws">
+              ${waiters.map(w => `<option value="${esc(w.id)}">${esc(w.name)}</option>`).join('')}
+            </select>
+            <input id="pin" type="password" placeholder="PIN kod (masalan: 1111)" autofocus>
+            <button class="newbtn" style="position:static;margin-top:10px" onclick="go()">Kirish</button>
+          </section>
+        `;
+        document.getElementById('pin')?.addEventListener('keydown', e => {
+          if (e.key === 'Enter') go();
+        });
+      });
+    }
+
+    async function go() {
+      unlockSound();
+      const ws = document.getElementById('ws');
+      const pin = document.getElementById('pin');
+      if (!ws || !pin) return;
+      W = {
+        id: ws.value,
+        pin: pin.value,
+        name: ws.options[ws.selectedIndex]?.text || 'Ofitsiant'
+      };
+      try {
+        const r = await fetch('/api/waiter/orders?id=' + encodeURIComponent(W.id) + '&pin=' + encodeURIComponent(W.pin));
+        if (!r.ok) {
+          alert("PIN noto'g'ri kiritildi!");
+          return;
+        }
+        localStorage.w = JSON.stringify(W);
+        knownNewIds = new Set();
+        firstOrdersLoad = true;
+        load();
+      } catch (err) {
+        alert('Server bilan aloqa xatosi: ' + err.message);
+      }
+    }
+
+    async function toggleShift() {
+      if (!W) return;
+      const next = !SHIFT.online;
+      try {
+        const res = await fetch('/api/waiter/presence?id=' + encodeURIComponent(W.id) + '&pin=' + encodeURIComponent(W.pin), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: W.id, pin: W.pin, online: next })
+        });
+        const d = await res.json();
+        if (!res.ok) throw new Error(d.error || 'Smena holatini o‘zgartirib bo‘lmadi');
+        SHIFT.online = !!d.online;
+        SHIFT.onlineAt = d.onlineAt || Date.now();
+        SHIFT.offlineAt = d.offlineAt || 0;
+        toast(SHIFT.online ? '✓ Siz hozir ONLAYN holatdasiz' : '✓ Smena yakunlandi (OFLAYN)');
+        draw();
+      } catch (err) {
+        toast('✕ ' + err.message, true);
+      }
+    }
+
+    async function load() {
+      if (!W) return login();
+      try {
+        const url = '/api/waiter/orders?id=' + encodeURIComponent(W.id) + '&pin=' + encodeURIComponent(W.pin);
+        const r = await fetch(url, { cache: 'no-store' });
+        if (!r.ok) {
+          localStorage.removeItem('w');
+          W = null;
+          return login();
+        }
+        const nextO = await r.json();
+        const pr = await fetch('/api/waiter/presence?id=' + encodeURIComponent(W.id) + '&pin=' + encodeURIComponent(W.pin), { cache: 'no-store' });
+        const nextShift = pr.ok ? await pr.json() : { online: true, onlineAt: 0, offlineAt: 0 };
+
+        O = nextO;
+        SHIFT = nextShift;
+
+        const fresh = O.filter(o => o.status === 'new' && !firstOrdersLoad && !knownNewIds.has(String(o.id)));
+        fresh.forEach(beep);
+        knownNewIds = new Set(O.filter(o => o.status === 'new').map(o => String(o.id)));
+        firstOrdersLoad = false;
+        draw();
+      } catch (e) {
+        console.error('Waiter load error:', e);
+      }
+    }
+
+    function draw() {
+      const active = O.filter(o => o.status !== 'paid');
+      const today = O.filter(o => new Date(o.time).toDateString() === new Date().toDateString());
+      const fresh = active.filter(o => o.status === 'new').sort((a, b) => (b.time || 0) - (a.time || 0));
+      const clock = t => t ? new Date(t).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' }) : '—';
+      const root = document.getElementById('app');
+      if (!root) return;
+
+      root.innerHTML = `
+        <section class="profile">
+          <div class="profile-top">
+            <div class="avatar">👨🏻‍🍳</div>
+            <div class="profile-info">
+              <b>${esc(W.name || 'Ofitsiant')}</b>
+              <small>Mas’ul ofitsiant</small>
+              <span class="online-tag ${SHIFT.online ? 'on' : 'off'}">
+                ● ${SHIFT.online ? 'ONLAYN (Buyurtmalar qabul qilinadi)' : 'OFLAYN (Smena yopiq)'}
+              </span>
+              <small>Ish boshladi: ${clock(SHIFT.onlineAt)} ${SHIFT.offlineAt ? '· Ish tugadi: ' + clock(SHIFT.offlineAt) : ''}</small>
+            </div>
+            <button class="btn dark" style="padding:8px 12px;font-size:12px" onclick="logout()">Chiqish</button>
+          </div>
+          <button type="button" class="shift-toggle-btn ${SHIFT.online ? 'go-offline' : 'go-online'}" onclick="toggleShift()">
+            ${SHIFT.online ? '🔴 Smenani tugatish (Oflayn bo‘lish)' : '🟢 Smenani boshlash (Onlayn bo‘lish)'}
+          </button>
+        </section>
+
+        <button type="button" id="manual-order-button" class="newbtn" data-order-add="0" style="background:linear-gradient(110deg,#3a2a16,#21170f);color:#ffe39a;border:1px solid #d5a94f">
+          🍽️ MENYUDAN QO‘LDA BUYURTMA QO‘SHISH
+        </button>
+
+        <div class="stats">
+          <div class="stat">
+            <span>Bugungi buyurtmalar</span>
+            <b>${today.length} ta</b>
+          </div>
+          <div class="stat">
+            <span>Bugungi tushum</span>
+            <b style="font-size:18px">${f(today.filter(o => o.status === 'paid').reduce((s, o) => s + Number(o.total || 0), 0))}</b>
+          </div>
+        </div>
+
+        <section id="incoming-orders" class="section">
+          <div class="section-title">
+            <h2>🔔 Yangi kelgan buyurtmalar</h2>
+            <span class="muted">${fresh.length} ta</span>
+          </div>
+          ${fresh.length ? fresh.map(card).join('') : '<div class="empty">Hozircha yangi buyurtma yo‘q</div>'}
+        </section>
+
+        <div class="section-title">
+          <h2>▤ Faol buyurtmalarim</h2>
+          <span class="muted">${active.length} ta faol</span>
+        </div>
+        ${active.slice().sort((a, b) => (b.time || 0) - (a.time || 0)).map(card).join('')}
+
+        <button class="btn" style="width:100%;margin:16px 0;background:linear-gradient(110deg,#ffe18d,#d58e20)" onclick="closeDay()">
+          🌙 Kunlik ishni yopish (ekranni tozalash)
+        </button>
+      `;
+
+      root.querySelectorAll('[data-order-add]').forEach(button => {
+        button.addEventListener('click', event => {
+          event.preventDefault();
+          openAdd(Number(button.getAttribute('data-order-add')) || 0);
+        });
+      });
+    }
+
+    function card(o) {
+      return `
+        <article class="order">
+          <div class="top">
+            <span class="oid">#${esc(o.id)} · Stol ${esc(o.table)}</span>
+            <span class="time">${o.time ? new Date(o.time).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' }) : ''}</span>
+          </div>
+          <div class="items">
+            ${(o.items || []).map(i => `
+              <div class="itemline">
+                ${i.img ? `<img class="foodpic" src="${esc(i.img)}" onerror="this.outerHTML='<span class=foodfallback>🍽️</span>'">` : '<span class="foodfallback">🍽️</span>'}
+                <span style="flex:1">${esc(i.name)} × ${esc(i.qty)}</span>
+                <b>${f(Number(i.price || 0) * Number(i.qty || 1))}</b>
+              </div>
+            `).join('')}
+          </div>
+          <div class="bottom">
+            <span class="status ${esc(o.status)}">${esc(ST[o.status] || o.status)}</span>
+            <b style="color:#ffe39a;font-size:16px">${f(o.total)}</b>
+          </div>
+          <div class="actions">
+            <button class="dark" onclick="printOrder(${Number(o.id)})">🧾 Chek chiqarish</button>
+            ${o.status !== 'paid' ? `
+              <button class="dark" data-order-add="${Number(o.id)}">+ Taom qo‘shish</button>
+              ${NX[o.status] ? `<button onclick="st(${Number(o.id)},'${NX[o.status][0]}')">${NX[o.status][1]}</button>` : ''}
+            ` : ''}
+          </div>
+        </article>
+      `;
+    }
+
+    async function printOrder(orderId) {
+      if (window.__printing) return;
+      window.__printing = true;
+      try {
+        const r = await fetch('/api/waiter/print', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...W, orderId })
+        });
+        const data = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(data.error || 'Chek yuborilmadi');
+        toast('✓ Chek printer navbatiga yuborildi');
+      } catch (e) {
+        toast('✕ ' + (e.message || 'Chek yuborishda xato'), true);
+      } finally {
+        window.__printing = false;
+      }
+    }
+
+    async function st(orderId, status) {
+      try {
+        await fetch('/api/waiter/status', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...W, orderId, status })
+        });
+        load();
+      } catch (e) {
+        toast('✕ ' + e.message, true);
+      }
+    }
+
+    async function closeDay() {
+      if (!confirm('Bugungi ish kunini yopasizmi? Buyurtmalar faqat sizning ofitsiant ekraningizdan tozalanadi. Barcha ma’lumotlar Admin va Kassada saqlanib qoladi.')) return;
+      try {
+        const r = await fetch('/api/waiter/close-day', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(W)
+        });
+        if (!r.ok) throw new Error('Kunlik ishni yopib bo‘lmadi');
+        knownNewIds.clear();
+        await load();
+        toast('✓ Kunlik ish muvaffaqiyatli yopildi');
+      } catch (e) {
+        toast('✕ ' + e.message, true);
+      }
+    }
+
+    async function logout() {
+      if (!confirm('Ofitsiant hisobidan chiqmoqchimisiz?')) return;
+      localStorage.removeItem('w');
+      W = null;
+      knownNewIds.clear();
+      login();
+    }
+
+    // Modal adding dishes
+    async function openAdd(id) {
+      const old = document.getElementById('pk');
+      if (old) old.remove();
+      TGT = Number(id) || 0;
+      SEL = {};
+
+      const modal = document.createElement('div');
+      modal.id = 'pk';
+      modal.className = 'modal';
+      modal.innerHTML = `
+        <div class="modalbox">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <h2 style="color:#ffe39a;margin:0">${TGT ? 'Buyurtmaga taom qo‘shish' : 'Yangi buyurtma ochish'}</h2>
+            <button style="background:none;border:0;color:#ffe39a;font-size:22px;cursor:pointer" onclick="closeAdd()">✕</button>
+          </div>
+          ${TGT ? '' : `
+            <label style="display:block;color:#ffe39a;margin:14px 0 4px">Stol raqami:</label>
+            <input class="input" id="tbl" type="text" placeholder="Masalan: 5" value="1">
+          `}
+          <div id="pl" style="margin-top:14px"><p class="muted">Menyu yuklanmoqda...</p></div>
+          <div class="actions" style="margin-top:20px">
+            <button type="button" class="dark" onclick="closeAdd()">Bekor qilish</button>
+            <button type="button" onclick="sendAdd()">✓ Buyurtmani saqlash</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modal);
+
+      try {
+        const r = await fetch('/api/menu');
+        const d = await r.json();
+        MENU = d.menu || [];
+        MCATS = d.cats || [];
+        renderPicker();
+      } catch (e) {
+        document.getElementById('pl').innerHTML = '<p class="muted">Menyuni yuklab bo‘lmadi: ' + e.message + '</p>';
+      }
+    }
+
+    function renderPicker() {
+      const pl = document.getElementById('pl');
+      if (!pl) return;
+      const groups = MCATS.map((c, idx) => ({
+        catName: c,
+        items: MENU.filter(m => m.cat === idx)
+      })).filter(g => g.items.length);
+
+      pl.innerHTML = groups.map(g => `
+        <h3 style="color:#ffe39a;margin:16px 0 8px;border-bottom:1px solid #755326;padding-bottom:4px">${esc(g.catName)}</h3>
+        ${g.items.map(m => `
+          <div class="menuitem">
+            ${m.img ? `<img class="foodpic" src="${esc(m.img)}" onerror="this.outerHTML='<span class=foodfallback>🍽️</span>'">` : '<span class="foodfallback">🍽️</span>'}
+            <div style="flex:1">
+              <b>${esc(m.name)}</b><br>
+              <small class="muted">${f(m.price)}</small>
+            </div>
+            <div class="qty">
+              <button type="button" onclick="pq(${Number(m.id)}, -1)">−</button>
+              <b style="display:inline-block;min-width:24px;text-align:center">${Number(SEL[m.id] || 0)}</b>
+              <button type="button" onclick="pq(${Number(m.id)}, 1)">+</button>
+            </div>
+          </div>
+        `).join('')}
+      `).join('');
+    }
+
+    function pq(id, delta) {
+      SEL[id] = Math.max(0, (SEL[id] || 0) + delta);
+      renderPicker();
+    }
+
+    function closeAdd() {
+      const pk = document.getElementById('pk');
+      if (pk) pk.remove();
+    }
+
+    async function sendAdd() {
+      const items = Object.entries(SEL)
+        .filter(([_, q]) => q > 0)
+        .map(([id, qty]) => ({ id: Number(id), qty }));
+
+      if (!items.length) return alert('Kamida bitta taom tanlang!');
+
+      const tblInput = document.getElementById('tbl');
+      const table = tblInput ? tblInput.value.trim() : '';
+      if (!TGT && !table) return alert('Stol raqamini kiriting!');
+
+      try {
+        const res = await fetch('/api/waiter/add', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ...W,
+            orderId: TGT || undefined,
+            table: table || undefined,
+            items
+          })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Saqlab bo‘lmadi');
+        closeAdd();
+        toast('✓ Buyurtma saqlandi');
+        load();
+      } catch (e) {
+        alert(e.message || 'Xato yuz berdi');
+      }
+    }
+
+    window.openAdd = openAdd;
+    if (W) load();
+    else login();
+    setInterval(() => W && load(), 4000);
+  </script>
+</body>
+</html>

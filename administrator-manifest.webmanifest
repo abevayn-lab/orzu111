@@ -1,0 +1,18 @@
+{
+  "id": "/administrator/",
+  "name": "ORZU Administrator",
+  "short_name": "Administrator",
+  "start_url": "/administrator/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#111014",
+  "theme_color": "#111014",
+  "icons": [
+    {
+      "src": "/administrator-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

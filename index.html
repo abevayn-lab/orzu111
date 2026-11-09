@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1,user-scalable=no">
+  <meta name="theme-color" content="#090807">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="ORZU">
+  <title>ORZU — Restoran menyusi</title>
+  <meta name="description" content="ORZU — Restoran menyusi, ofitsiant, kassir, administrator va admin tizimi" />
+  <meta property="og:title" content="ORZU — Restoran menyusi" />
+  <meta property="og:description" content="ORZU — Restoran menyusi, ofitsiant, kassir, administrator va admin tizimi" />
+  <meta property="og:type" content="website" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="stylesheet" href="/style.css">
+  <style>
+    :root { color-scheme: dark; }
+    body.customer-app {
+      min-height: 100vh;
+      padding-bottom: calc(105px + env(safe-area-inset-bottom));
+      background: radial-gradient(ellipse at 50% -12%, #4a3014 0, #17100a 36%, #080706 78%);
+      color: #fff;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    }
+    .staff-portal-bar {
+      background: rgba(18, 14, 10, 0.92);
+      border-bottom: 1px solid rgba(212, 175, 55, 0.3);
+      padding: 6px 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      color: #d8c29d;
+      backdrop-filter: blur(10px);
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+    .staff-links {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .staff-link {
+      color: #ffe39a;
+      text-decoration: none;
+      padding: 3px 8px;
+      border-radius: 6px;
+      background: rgba(255, 227, 154, 0.1);
+      border: 1px solid rgba(212, 175, 55, 0.25);
+      white-space: nowrap;
+      transition: all 0.2s;
+    }
+    .staff-link:hover {
+      background: rgba(255, 227, 154, 0.25);
+      border-color: #d4af37;
+    }
+    .hero {
+      padding: 24px 14px 16px;
+      text-align: center;
+    }
+    .hero h1 {
+      font-size: 44px;
+      letter-spacing: 4px;
+      text-shadow: 0 2px 20px #c58b37;
+    }
+    .hero p {
+      letter-spacing: 4px;
+      color: #e9d5a7;
+      font-size: 13px;
+    }
+    .tabs {
+      position: sticky;
+      top: 35px;
+      z-index: 20;
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding: 10px 12px;
+      background: rgba(11, 9, 7, 0.94);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid #60451e;
+      scrollbar-width: none;
+    }
+    .tab {
+      white-space: nowrap;
+      border: 1px solid #80602b;
+      border-radius: 22px;
+      background: #21170e;
+      color: #f8dfa2;
+      padding: 10px 15px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .tab.on {
+      background: linear-gradient(110deg, #ffe18d, #d58e20);
+      color: #241606;
+      border-color: #ffe18d;
+    }
+    .grid { gap: 14px; }
+    .card {
+      overflow: hidden;
+      border: 1px solid #755326;
+      border-radius: 20px;
+      background: linear-gradient(145deg, #291b10, #100c09);
+      box-shadow: 0 8px 22px rgba(0,0,0,0.5);
+    }
+    .card .im {
+      height: 165px;
+      background: #1b130b;
+    }
+    .card .im img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .card .p { padding: 13px; }
+    .card h3 {
+      font-size: 16px;
+      margin: 0 0 10px;
+      color: #fff2d3;
+    }
+    .q button {
+      width: 34px;
+      height: 34px;
+      border: 1px solid #987035;
+      border-radius: 10px;
+      background: #30200f;
+      color: #ffe39a;
+      font-size: 20px;
+      cursor: pointer;
+    }
+    .bar {
+      position: fixed;
+      z-index: 40;
+      left: 10px;
+      right: 10px;
+      bottom: calc(10px + env(safe-area-inset-bottom));
+      padding: 12px 16px;
+      border: 1px solid #8a642c;
+      border-radius: 19px;
+      background: rgba(23, 16, 14, 0.95);
+      backdrop-filter: blur(18px);
+      box-shadow: 0 8px 30px rgba(0,0,0,0.7);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transform: translateY(150%);
+      transition: transform 0.3s ease;
+    }
+    .bar.on { transform: translateY(0); }
+    .bar .btn {
+      border: 0;
+      border-radius: 13px;
+      background: linear-gradient(110deg, #ffe18d, #d58e20);
+      color: #241606;
+      font-weight: 900;
+      padding: 13px 20px;
+      cursor: pointer;
+    }
+    .modal {
+      position: fixed;
+      inset: 0;
+      z-index: 60;
+      background: rgba(5, 4, 3, 0.85);
+      backdrop-filter: blur(8px);
+      display: none;
+      align-items: flex-end;
+      justify-content: center;
+    }
+    .modal.on { display: flex; }
+    .sheet {
+      width: 100%;
+      max-width: 520px;
+      border: 1px solid #8a642c;
+      border-radius: 24px 24px 0 0;
+      background: linear-gradient(145deg, #291b10, #100c09);
+      padding: 22px 18px calc(20px + env(safe-area-inset-bottom));
+      max-height: 85vh;
+      overflow-y: auto;
+    }
+    .sheet input {
+      width: 100%;
+      padding: 14px;
+      border: 1px solid #8a642c;
+      border-radius: 12px;
+      background: #090706;
+      color: #fff;
+      font-size: 16px;
+      margin: 10px 0;
+    }
+    .table-pills {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin: 8px 0 14px;
+    }
+    .table-pill {
+      border: 1px solid #755326;
+      background: #1e150d;
+      color: #ffe39a;
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .table-pill.active {
+      background: #d58e20;
+      color: #1a1005;
+      border-color: #ffe18d;
+    }
+  </style>
+</head>
+<body class="customer-app">
+
+  <!-- Staff Quick Portal Switcher -->
+  <div class="staff-portal-bar">
+    <span><b>ORZU</b> Boshqaruv:</span>
+    <div class="staff-links">
+      <a href="/waiter" class="staff-link">👨🏻‍🍳 Ofitsiant</a>
+      <a href="/cashier" class="staff-link">💵 Kassir</a>
+      <a href="/administrator" class="staff-link">📋 Administrator</a>
+      <a href="/admin" class="staff-link">⚙️ Admin</a>
+    </div>
+  </div>
+
+  <div class="hero">
+    <h1 class="gold">ORZU</h1>
+    <div class="line"></div>
+    <p>RESTORAN · MENYU</p>
+  </div>
+
+  <div class="tabs" id="tb"></div>
+
+  <div class="wrap">
+    <div class="grid" id="g"></div>
+  </div>
+
+  <div class="bar" id="bar">
+    <div>
+      <small style="color:#b9a875">Jami</small><br>
+      <b class="gold" id="tot" style="font-size:20px">0 so'm</b>
+    </div>
+    <button class="btn" onclick="op()">Buyurtma berish</button>
+  </div>
+
+  <div class="modal" id="md" onclick="if(event.target==this)closeModal()">
+    <div class="sheet" id="sh"></div>
+  </div>
+
+  <script>
+    let T = new URLSearchParams(location.search).get('table') || '1';
+    let M = [], C = [], cat = 0, cart = {};
+    const f = n => Number(n || 0).toLocaleString('uz-UZ') + " so'm";
+
+    async function init() {
+      try {
+        const res = await fetch('/api/menu');
+        const data = await res.json();
+        C = data.cats || [];
+        M = data.menu || [];
+        tabs();
+        show();
+      } catch (e) {
+        console.error('Menu load error:', e);
+      }
+    }
+
+    function tabs() {
+      tb.innerHTML = C.map((c, i) => `
+        <button class="tab ${i === cat ? 'on' : ''}" onclick="cat=${i};tabs();show()">${c}</button>
+      `).join('');
+    }
+
+    function show() {
+      const items = M.filter(m => m.cat === cat);
+      if (!items.length) {
+        g.innerHTML = '<p style="text-align:center;color:#b9a875;padding:30px 10px;grid-column:1/-1">Bu bo‘limda hozircha taom yo‘q</p>';
+        return;
+      }
+      g.innerHTML = items.map((m, i) => `
+        <div class="card" style="animation-delay:${i * 0.05}s">
+          <div class="im">
+            <img src="${m.img || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&auto=format&fit=crop&q=80'}" alt="${m.name}" onerror="this.src='https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&auto=format&fit=crop&q=80'">
+          </div>
+          <div class="p">
+            <h3>${m.name}</h3>
+            <div class="row">
+              <b class="gold">${f(m.price)}</b>
+              <div class="q">
+                <button onclick="ch(${m.id},-1)">−</button>
+                <span id="q${m.id}">${cart[m.id] || 0}</span>
+                <button onclick="ch(${m.id},1)">+</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function sum() {
+      return M.reduce((s, m) => s + (cart[m.id] || 0) * Number(m.price || 0), 0);
+    }
+
+    function ch(id, d) {
+      cart[id] = Math.max(0, (cart[id] || 0) + d);
+      const e = document.getElementById('q' + id);
+      if (e) e.textContent = cart[id];
+      const s = sum();
+      tot.textContent = f(s);
+      bar.classList.toggle('on', s > 0);
+    }
+
+    function pickTable(num) {
+      T = String(num);
+      const tn = document.getElementById('tn');
+      if (tn) tn.value = T;
+      document.querySelectorAll('.table-pill').forEach(btn => {
+        btn.classList.toggle('active', btn.getAttribute('data-t') === T);
+      });
+    }
+
+    function closeModal() {
+      md.classList.remove('on');
+    }
+
+    function op() {
+      const L = M.filter(m => cart[m.id]);
+      if (!L.length) return;
+      const pills = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(n => 
+        `<button type="button" class="table-pill ${String(n) === String(T) ? 'active' : ''}" data-t="${n}" onclick="pickTable(${n})">Stol ${n}</button>`
+      ).join('');
+
+      sh.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <h2 class="gold">Buyurtmangiz</h2>
+          <button style="background:none;border:0;color:#e9d5a7;font-size:22px;cursor:pointer" onclick="closeModal()">✕</button>
+        </div>
+        <div class="sp">
+          ${L.map(m => `
+            <div class="row" style="padding:9px 0;border-bottom:1px solid #3a2f12">
+              <span>${m.name} × ${cart[m.id]}</span>
+              <b>${f(m.price * cart[m.id])}</b>
+            </div>
+          `).join('')}
+        </div>
+        <div class="row sp" style="margin-top:14px">
+          <b>Jami summa:</b>
+          <b class="gold" style="font-size:19px">${f(sum())}</b>
+        </div>
+        <label style="display:block;margin-top:14px;color:#e9d5a7;font-size:13px">Stol raqamini tanlang yoki kiriting:</label>
+        <div class="table-pills">${pills}</div>
+        <input id="tn" type="text" placeholder="Stol raqami (masalan: 1, 5, VIP-2)" value="${T}" onchange="T=this.value.trim()">
+        <button class="btn" style="width:100%;margin-top:10px" onclick="send()">Ofitsiantga yuborish</button>
+      `;
+      md.classList.add('on');
+    }
+
+    async function send() {
+      const t = document.getElementById('tn').value.trim();
+      if (!t) return alert('Iltimos, stol raqamini kiriting!');
+      const items = Object.entries(cart)
+        .filter(([_, qty]) => qty > 0)
+        .map(([id, qty]) => ({ id: +id, qty }));
+
+      if (!items.length) return alert("Savat bo'sh");
+
+      try {
+        const res = await fetch('/api/order', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ table: t, items })
+        });
+        const r = await res.json();
+        if (r.error) return alert(r.error);
+
+        cart = {};
+        T = t;
+        sh.innerHTML = `
+          <div class="ok">
+            <i>✨</i>
+            <h2 class="gold">Rahmat!</h2>
+            <p style="margin-top:10px;line-height:1.6">Buyurtma <b>#${r.id}</b> qabul qilindi.<br>Stol: <b>${t}</b><br>Ofitsiant tez orada xizmat ko‘rsatadi.</p>
+            <button class="btn" style="margin-top:20px;width:100%" onclick="closeModal();ch(0,0);show()">Menyuga qaytish</button>
+          </div>
+        `;
+        bar.classList.remove('on');
+      } catch (err) {
+        alert('Buyurtma yuborishda xato: ' + err.message);
+      }
+    }
+
+    init();
+  </script>
+</body>
+</html>

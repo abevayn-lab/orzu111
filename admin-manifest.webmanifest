@@ -1,0 +1,19 @@
+{
+  "id": "/admin/",
+  "name": "ORZU Admin",
+  "short_name": "Admin",
+  "description": "ORZU restoranining boshqaruv paneli",
+  "start_url": "/admin/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#111014",
+  "theme_color": "#111014",
+  "icons": [
+    {
+      "src": "/admin-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

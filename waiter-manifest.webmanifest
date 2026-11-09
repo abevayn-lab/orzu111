@@ -1,0 +1,18 @@
+{
+  "id": "/waiter/",
+  "name": "ORZU Ofitsiant",
+  "short_name": "Ofitsiant",
+  "start_url": "/waiter/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#111014",
+  "theme_color": "#111014",
+  "icons": [
+    {
+      "src": "/waiter-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

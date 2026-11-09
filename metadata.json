@@ -1,0 +1,6 @@
+{
+  "name": "ORZU Restoran Boshqaruv Tizimi",
+  "description": "ORZU — Restoran menyusi, ofitsiant, kassir, administrator va admin tizimi",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
