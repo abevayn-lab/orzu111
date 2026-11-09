@@ -553,10 +553,11 @@
     }
 
     async function clearStats() {
-      if (!confirm('Statistika hisoblagichini noldan boshlaysizmi? Tarix saqlanib qoladi.')) return;
-      await api('/api/admin/reset-stats', 'POST', {});
+      if (!confirm('DIQQAT! Statistikani tozalash bilan BARCHA buyurtmalar ro‘yxati ham butunlay o‘chadi. Ofitsiant va kassir sahifalaridagi buyurtmalar ham yo‘qoladi. Davom etasizmi?')) return;
+      const result = await api('/api/admin/reset-stats', 'POST', {});
+      if (!result.ok) return alert(result.error || 'Tozalash amalga oshmadi');
       await load();
-      alert('Statistika yangilandi!');
+      alert('Statistika va buyurtmalar ro‘yxati tozalandi!');
     }
 
     load();
