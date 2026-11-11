@@ -213,7 +213,8 @@
     const f = n => Number(n || 0).toLocaleString('uz-UZ') + " so'm";
     const TABS = ['Bosh sahifa', 'Buyurtmalar', 'Menyu', 'Ofitsiantlar', 'Statistika', 'Bo‘limlar'];
 
-    const H = () => ({ 'Content-Type': 'application/json', 'x-admin': P });
+    const encodeHeaderSecret = value => btoa(String.fromCharCode(...new TextEncoder().encode(String(value || ''))));
+    const H = () => ({ 'Content-Type': 'application/json', 'x-admin': encodeHeaderSecret(P) });
 
     async function api(u, m = 'GET', b) {
       const r = await fetch(u, {

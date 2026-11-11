@@ -308,8 +308,10 @@
     const money = n => Number(n || 0).toLocaleString('uz-UZ') + " so‘m";
     const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
+    const encodeHeaderSecret = value => btoa(String.fromCharCode(...new TextEncoder().encode(String(value || ''))));
+
     function headers() {
-      return { 'Content-Type': 'application/json', 'x-cashier': key };
+      return { 'Content-Type': 'application/json', 'x-cashier': encodeHeaderSecret(key) };
     }
 
     async function api(url, method = 'GET', body) {
@@ -467,27 +469,11 @@
     }
 
     async function printTicket(orderId) {
-      // 1. Queue to server print jobs (safe across HTTPS and mobile devices)
-      try {
-        await api('/api/cashier/print', 'POST', { orderId, printerIp: $('printerIp')?.value });
-      } catch (err) {
-        console.warn('Server print queue error:', err);
-      }
-
-      // 2. Also try direct local bridge if running on same desktop
-      try {
-        const printerIp = $('printerIp')?.value.trim() || DATA.settings?.printerIp || '192.168.1.51';
-        const order = DATA.orders.find(x => Number(x.id) === orderId);
-        if (order) {
-          await fetch('http://127.0.0.1:17891/print', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ printerIp, order })
-          });
-        }
-      } catch (e) {
-        // Ignored as server queue handles it
-      }
+      // Use only the server queue. The local bridge polls this queue, preventing duplicate receipts.
+      return await api('/api/cashier/print', 'POST', {
+        orderId,
+        printerIp: $('printerIp')?.value.trim() || DATA.settings?.printerIp || '192.168.1.51'
+      });
     }
 
     async function markPaid(id) {
