@@ -7,7 +7,7 @@ const HOST = '127.0.0.1';
 const PORT = 17891;
 
 // Configurable API BASE and allowed origin
-const API_BASE = (process.env.APP_URL || process.env.API_BASE || process.argv[2] || 'http://localhost:3000').replace(/\/$/, '');
+const API_BASE = (process.env.APP_URL || process.env.API_BASE || process.argv[2] || 'https://orzu111-production.up.railway.app').replace(/\/$/, '');
 const PRINT_KEY = process.env.ORZU_PRINT_KEY || 'ORZU-LOCAL-PRINT-KEY-9f42c7b1-2026-11';
 
 let polling = false;
@@ -179,5 +179,5 @@ server.listen(PORT, HOST, () => {
   console.log('ORZU printer bridge ishga tushdi: http://' + HOST + ':' + PORT);
   console.log('Bog‘langan server manzili: ' + API_BASE);
   pollPrintJobs();
-  setInterval(pollPrintJobs, 3000);
+  setInterval(pollPrintJobs, 1000);
 });
