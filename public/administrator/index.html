@@ -213,6 +213,7 @@
     const $ = id => document.getElementById(id);
     const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     const f = n => Number(n || 0).toLocaleString('uz-UZ') + " so'm";
+    const encodeHeaderSecret = value => btoa(String.fromCharCode(...new TextEncoder().encode(String(value || ''))));
 
     const statusName = {
       new: 'Yangi buyurtma',
@@ -286,7 +287,7 @@
       busy = true;
       try {
         const r = await fetch('/api/administrator/data', {
-          headers: { 'x-administrator': key }
+          headers: { 'x-administrator': encodeHeaderSecret(key) }
         });
         const d = await r.json();
         if (!r.ok) {
