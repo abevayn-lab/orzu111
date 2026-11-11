@@ -7,7 +7,11 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-app.use(express.json({ limit: '12mb' }));
+app.use(express.json({ limit: '12mb', strict: false }));
+app.use((q: Request, _s: Response, n: NextFunction) => {
+  if (q.body === null) q.body = {};
+  n();
+});
 
 // PASSWORDS & SECRETS
 // Fix: ADMINISTRATOR_PASS was defaulting to empty string '', causing 401 error for any administrator login.
@@ -272,21 +276,29 @@ function save(k: 'cfg' | 'orders') {
   return operation;
 }
 
+// Decode UTF-8 passwords transported as base64 so non-Latin passwords are valid HTTP headers.
+function secretHeaderMatches(q: Request, headerName: string, expected: string) {
+  const raw = String(q.headers[headerName] || '');
+  if (raw === expected) return true; // backward compatibility with existing ASCII passwords
+  try { return Buffer.from(raw, 'base64').toString('utf8') === expected; }
+  catch { return false; }
+}
+
 // ADMIN AUTH
 function adm(q: Request, s: Response, n: NextFunction) {
-  if (q.headers['x-admin'] === PASS) return n();
+  if (secretHeaderMatches(q, 'x-admin', PASS)) return n();
   return s.status(401).json({ error: 'auth' });
 }
 
 // ADMINISTRATOR AUTH (Fixed: now accepts ADMINISTRATOR_PASS or fallback to PASS)
 function administrator(q: Request, s: Response, n: NextFunction) {
-  if (q.headers['x-administrator'] === ADMINISTRATOR_PASS) return n();
+  if (secretHeaderMatches(q, 'x-administrator', ADMINISTRATOR_PASS)) return n();
   return s.status(401).json({ error: 'auth' });
 }
 
 // CASHIER AUTH
 function cashier(q: Request, s: Response, n: NextFunction) {
-  if (q.headers['x-cashier'] === CASHIER_PASS) return n();
+  if (secretHeaderMatches(q, 'x-cashier', CASHIER_PASS)) return n();
   return s.status(401).json({ error: 'auth' });
 }
 
@@ -503,7 +515,7 @@ app.post('/api/waiter/add', wt, (q: WaiterRequest, s: Response) => {
 });
 
 // WAITER PRINT
-app.post('/api/waiter/print', wt, (q: WaiterRequest, s: Response) => {
+app.post('/api/waiter/print', wt, async (q: WaiterRequest, s: Response) => {
   const wid = q.w!.id;
   const o = O.list.find(x => String(x.id) === String(q.body.orderId) && x.waiter === wid);
   if (!o) return s.status(404).json({ error: 'Buyurtma topilmadi' });
@@ -516,12 +528,12 @@ app.post('/api/waiter/print', wt, (q: WaiterRequest, s: Response) => {
     order: { ...o, waiterName: o.waiterName || q.w!.name }
   };
   O.printJobs.push(job);
-  save('orders');
-  s.json({ ok: true, message: 'Chek printerga yuborildi', jobId: job.id });
+  await save('orders');
+  s.json({ ok: true, message: 'Chek printer navbatiga yuborildi', jobId: job.id });
 });
 
 // CASHIER PRINT (NEW: Allows Cashier to queue prints directly through server API, avoiding Mixed Content)
-app.post('/api/cashier/print', cashier, (q: Request, s: Response) => {
+app.post('/api/cashier/print', cashier, async (q: Request, s: Response) => {
   const o = O.list.find(x => String(x.id) === String(q.body.orderId));
   if (!o) return s.status(404).json({ error: 'Buyurtma topilmadi' });
 
@@ -532,7 +544,7 @@ app.post('/api/cashier/print', cashier, (q: Request, s: Response) => {
     order: { ...o }
   };
   O.printJobs.push(job);
-  save('orders');
+  await save('orders');
   s.json({ ok: true, message: 'Chek printer navbatiga qo‘yildi', jobId: job.id });
 });
 
@@ -549,11 +561,11 @@ app.get('/api/printer/jobs', (q, s) => {
 });
 
 // LOCAL BRIDGE: ACK
-app.post('/api/printer/jobs/ack', (q, s) => {
+app.post('/api/printer/jobs/ack', async (q, s) => {
   if (q.headers['x-orzu-print-key'] !== PRINT_KEY) return s.status(401).json({ error: 'auth' });
   const before = (O.printJobs || []).length;
   O.printJobs = (O.printJobs || []).filter(j => String(j.id) !== String(q.body.id));
-  if (O.printJobs.length !== before) save('orders');
+  if (O.printJobs.length !== before) await save('orders');
   s.json({ ok: true });
 });
 
@@ -856,8 +868,7 @@ load()
     app.listen(PORT, '0.0.0.0', () => {
       console.log(`ORZU tizimi 0.0.0.0:${PORT} da ishga tushdi.`);
       console.log(`Baza: ${SU && SK ? 'Supabase' : 'Lokal fayl (data.json)'}`);
-      console.log(`Admin paroli: ${PASS} | Kassir: ${CASHIER_PASS} | Administrator: ${ADMINISTRATOR_PASS}`);
-      console.log(`Ofitsiantlar: ${CFG.waiters.map(w => `${w.name} (PIN: ${w.pin})`).join(', ')}`);
+      console.log(`Xavfsizlik: parollar va PIN-kodlar logga chiqarilmaydi.`);
     });
   })
   .catch(err => {
