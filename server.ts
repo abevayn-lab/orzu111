@@ -677,8 +677,8 @@ app.post('/api/cashier/update-order', cashier, async (q: Request, s: Response) =
   s.json({ ok: true, order });
 });
 
-// CASHIER PAY
-app.post('/api/cashier/pay', cashier, (q, s) => {
+// CASHIER PAY: to‘lovni umumiy buyurtmalar bazasiga to‘liq saqlab, keyin tasdiqlash.
+app.post('/api/cashier/pay', cashier, async (q, s) => {
   const o = O.list.find(x => String(x.id) === String(q.body.orderId));
   if (!o) return s.status(404).json({ error: 'Buyurtma topilmadi' });
   if (o.status === 'paid') return s.status(409).json({ error: 'Bu buyurtma avval to‘langan', order: o });
@@ -687,7 +687,16 @@ app.post('/api/cashier/pay', cashier, (q, s) => {
   o.paidAt = Date.now();
   o.paidBy = String(q.body.cashierName || 'Kassir').slice(0, 60);
   o.paymentMethod = String(q.body.paymentMethod || 'Naqd').slice(0, 30);
-  save('orders');
+  try {
+    await save('orders');
+  } catch (error) {
+    console.error('Kassir to‘lovini saqlashda xato:', error);
+    o.status = 'pending';
+    delete o.paidAt;
+    delete o.paidBy;
+    delete o.paymentMethod;
+    return s.status(500).json({ error: 'To‘lov bazaga saqlanmadi. Qayta urinib ko‘ring.' });
+  }
   s.json({ ok: true, order: o });
 });
 
