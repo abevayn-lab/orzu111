@@ -19,6 +19,7 @@ app.use((q: Request, _s: Response, n: NextFunction) => {
 const PASS = process.env.ADMIN_PASS || 'admin123';
 const ADMINISTRATOR_PASS = process.env.ADMINISTRATOR_PASS || PASS || 'admin123';
 const CASHIER_PASS = process.env.CASHIER_PASS || PASS || 'admin123';
+const KITCHEN_PASS = process.env.KITCHEN_PASS || PASS || 'admin123';
 const PRINT_KEY = process.env.ORZU_PRINT_KEY || 'ORZU-LOCAL-PRINT-KEY-9f42c7b1-2026-11';
 const QR_SECRET = process.env.ORZU_QR_SECRET || PASS;
 function makeTableQrToken(table: string) { return createHmac('sha256', QR_SECRET).update('orzu-table:' + table).digest('hex'); }
@@ -73,6 +74,7 @@ interface OrderItem {
   price: number;
   qty: number;
   img?: string;
+  kitchenStatus?: 'new' | 'preparing' | 'ready' | 'served';
 }
 
 interface Order {
@@ -319,6 +321,12 @@ function cashier(q: Request, s: Response, n: NextFunction) {
   return s.status(401).json({ error: 'auth' });
 }
 
+// KITCHEN AUTH
+function kitchen(q: Request, s: Response, n: NextFunction) {
+  if (secretHeaderMatches(q, 'x-kitchen', KITCHEN_PASS)) return n();
+  return s.status(401).json({ error: 'auth' });
+}
+
 // WAITER AUTH
 interface WaiterRequest extends Request {
   w?: Waiter;
@@ -431,6 +439,39 @@ app.post('/api/order', async (q, s) => {
 // WAITERS LIST
 app.get('/api/waiters', (_q, s) => {
   s.json(CFG.waiters.map(({ id, name }) => ({ id, name })));
+});
+
+// KITCHEN DISPLAY: active orders and per-item preparation states
+app.get('/api/kitchen/orders', kitchen, (_q, s) => {
+  const orders = O.list
+    .filter(o => o.status !== 'paid')
+    .slice()
+    .sort((a, b) => a.time - b.time)
+    .map(o => ({
+      id: o.id, table: o.table, waiterName: o.waiterName, time: o.time,
+      status: o.status,
+      items: o.items.map((item, index) => ({
+        index, name: item.name, qty: item.qty,
+        kitchenStatus: item.kitchenStatus || 'new'
+      }))
+    }));
+  s.json({ orders });
+});
+
+app.post('/api/kitchen/item-status', kitchen, async (q, s) => {
+  const order = O.list.find(o => String(o.id) === String(q.body.orderId));
+  const index = Number(q.body.itemIndex);
+  const next = String(q.body.status || '');
+  if (!order || order.status === 'paid' || !Number.isInteger(index) || !order.items[index]) {
+    return s.status(404).json({ error: 'Buyurtma yoki taom topilmadi' });
+  }
+  if (!['new', 'preparing', 'ready', 'served'].includes(next)) {
+    return s.status(400).json({ error: 'Taom holati noto‘g‘ri' });
+  }
+  order.items[index].kitchenStatus = next as OrderItem['kitchenStatus'];
+  const saved = await save('orders');
+  if (!saved) return s.status(500).json({ error: 'Holat saqlanmadi. Qayta urinib ko‘ring.' });
+  s.json({ ok: true, orderId: order.id, itemIndex: index, status: next });
 });
 
 // WAITER PRESENCE: GET
