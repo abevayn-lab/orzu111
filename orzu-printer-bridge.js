@@ -1,5 +1,6 @@
+
 // ORZU local thermal-printer bridge for Windows laptops
-// Run: node orzu-printer-bridge.js [API_BASE_URL]
+// Run: node orzu-printer-bridge.cjs
 
 const http = require('http');
 const net = require('net');
@@ -14,9 +15,7 @@ const API_BASE = (
   'https://orzu111-production.up.railway.app'
 ).replace(/\/$/, '');
 
-const PRINT_KEY =
-  process.env.ORZU_PRINT_KEY ||
-  'ORZU-LOCAL-PRINT-KEY-9f42c7b1-2026-11';
+const PRINT_KEY = process.env.ORZU_PRINT_KEY || 'ORZU-LOCAL-PRINT-KEY-9f42c7b1-2026-11';
 
 let polling = false;
 let lastIdleLog = 0;
@@ -35,13 +34,13 @@ function line(s = '') {
   return Buffer.from(esc(s) + '\n', 'ascii');
 }
 
-// ORZU ixcham chek dizayni
+// YANGI IXCHAM ORZU CHEK DIZAYNI
 function makeReceipt(o) {
   const out = [
-    Buffer.from([0x1b, 0x40]),       // Printer reset
-    Buffer.from([0x1b, 0x61, 0x01]), // Center
-    Buffer.from([0x1b, 0x45, 0x01]), // Bold
-    Buffer.from([0x1d, 0x21, 0x10]), // Logo size
+    Buffer.from([0x1b, 0x40]),
+    Buffer.from([0x1b, 0x61, 0x01]),
+    Buffer.from([0x1b, 0x45, 0x01]),
+    Buffer.from([0x1d, 0x21, 0x10]),
     line('ORZU'),
     Buffer.from([0x1d, 0x21, 0x00]),
     line('RESTAURANT'),
@@ -51,9 +50,9 @@ function makeReceipt(o) {
   ];
 
   out.push(
-    Buffer.from([0x1b, 0x61, 0x00]), // Left
+    Buffer.from([0x1b, 0x61, 0x00]),
     Buffer.from([0x1b, 0x45, 0x01]),
-    line('BUYURTMA  #' + (o.id ?? '-')),
+    line('BUYURTMA #' + (o.id ?? '-')),
     Buffer.from([0x1b, 0x45, 0x00]),
     line('Stol: ' + (o.table ?? '-')),
     line('Ofitsiant: ' + (o.waiterName || '-')),
@@ -68,7 +67,7 @@ function makeReceipt(o) {
 
     out.push(
       line(name),
-      line(' ' + qty + ' x ' + money(it.price) + ' = ' + total)
+      line(qty + ' x ' + money(it.price) + ' = ' + total)
     );
   }
 
@@ -79,12 +78,12 @@ function makeReceipt(o) {
     Buffer.from([0x1b, 0x45, 0x00]),
     line('Tolov: ' + esc(o.paymentMethod || 'Naqd')),
     line('================================'),
-    Buffer.from([0x1b, 0x61, 0x01]), // Center
+    Buffer.from([0x1b, 0x61, 0x01]),
     Buffer.from([0x1b, 0x45, 0x01]),
     line('TASHRIFINGIZ UCHUN RAHMAT!'),
     Buffer.from([0x1b, 0x45, 0x00]),
     line(''),
-    Buffer.from([0x1d, 0x56, 0x42, 0x00]) // Cut paper
+    Buffer.from([0x1d, 0x56, 0x42, 0x00])
   );
 
   return Buffer.concat(out);
@@ -94,16 +93,13 @@ function send(ip, bytes) {
   return new Promise((resolve, reject) => {
     const socket = net.createConnection(
       { host: ip, port: 9100, timeout: 5000 },
-      () => {
-        socket.end(bytes, () => resolve());
-      }
+      () => socket.end(bytes, () => resolve())
     );
 
     socket.on('error', reject);
-
-    socket.on('timeout', () => {
-      socket.destroy(new Error('Printer ulanish vaqti tugadi'));
-    });
+    socket.on('timeout', () =>
+      socket.destroy(new Error('Printer ulanish vaqti tugadi'))
+    );
   });
 }
 
@@ -123,20 +119,11 @@ async function pollPrintJobs() {
     if (data.job) {
       const job = data.job;
 
-      if (
-        !job.order ||
-        !Array.isArray(job.order.items) ||
-        !job.order.items.length
-      ) {
+      if (!job.order || !Array.isArray(job.order.items) || !job.order.items.length) {
         throw new Error('Buyurtma ma’lumoti noto‘g‘ri');
       }
 
-      console.log(
-        'ORZU buyurtma topildi:',
-        job.order.id,
-        '| Stol:',
-        job.order.table
-      );
+      console.log('ORZU buyurtma topildi:', job.order.id);
 
       await send(
         job.printerIp || '192.168.1.51',
@@ -152,11 +139,9 @@ async function pollPrintJobs() {
         body: JSON.stringify({ id: data.job.id })
       });
 
-      if (!ack.ok) {
-        throw new Error('Print acknowledgement failed');
-      }
+      if (!ack.ok) throw new Error('Print acknowledgement failed');
 
-      console.log('ORZU chek chiqarildi:', job.order.id);
+      console.log('ORZU chek muvaffaqiyatli chiqarildi:', job.order.id);
 
     } else if (Date.now() - lastIdleLog > 30000) {
       console.log('ORZU: server bilan aloqa bor, navbat bo‘sh.');
@@ -179,10 +164,7 @@ const server = http.createServer((req, res) => {
   res.setHeader('Access-Control-Allow-Origin', origin);
   res.setHeader('Vary', 'Origin');
   res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
-  res.setHeader(
-    'Access-Control-Allow-Headers',
-    'Content-Type, x-orzu-print-key'
-  );
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-orzu-print-key');
   res.setHeader('Access-Control-Allow-Private-Network', 'true');
 
   if (req.method === 'OPTIONS') {
@@ -192,7 +174,6 @@ const server = http.createServer((req, res) => {
 
   if (req.method === 'GET' && req.url === '/health') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
-
     return res.end(JSON.stringify({
       ok: true,
       service: 'ORZU printer bridge',
@@ -229,17 +210,11 @@ const server = http.createServer((req, res) => {
 
       await send(ip, makeReceipt(o));
 
-      res.writeHead(200, {
-        'Content-Type': 'application/json'
-      });
-
+      res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ ok: true }));
 
     } catch (e) {
-      res.writeHead(500, {
-        'Content-Type': 'application/json'
-      });
-
+      res.writeHead(500, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({
         error: e.message || 'Printer xatosi'
       }));
@@ -248,11 +223,8 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(PORT, HOST, () => {
-  console.log(
-    'ORZU printer bridge ishga tushdi: http://' + HOST + ':' + PORT
-  );
-
-  console.log('Bog‘langan server:', API_BASE);
+  console.log('ORZU printer bridge ishga tushdi: http://' + HOST + ':' + PORT);
+  console.log('Bog‘langan server manzili: ' + API_BASE);
 
   pollPrintJobs();
   setInterval(pollPrintJobs, 1000);
