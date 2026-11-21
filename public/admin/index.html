@@ -202,6 +202,7 @@
   <div class="wrap" id="app"></div>
   <nav id="bottomNav" aria-label="Admin menyu"></nav>
 
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script>
     let P = localStorage.getItem('ap') || '';
     let D = { cats: [], menu: [], waiters: [], orders: [], history: [] };
@@ -211,7 +212,7 @@
     let knownOrderIds = null;
 
     const f = n => Number(n || 0).toLocaleString('uz-UZ') + " so'm";
-    const TABS = ['Bosh sahifa', 'Buyurtmalar', 'Menyu', 'Ofitsiantlar', 'Statistika', 'Bo‘limlar'];
+    const TABS = ['Bosh sahifa', 'Buyurtmalar', 'Menyu', 'Ofitsiantlar', 'Statistika', 'Stol QR', 'Bo‘limlar'];
 
     const encodeHeaderSecret = value => btoa(String.fromCharCode(...new TextEncoder().encode(String(value || ''))));
     const H = () => ({ 'Content-Type': 'application/json', 'x-admin': encodeHeaderSecret(P) });
@@ -272,7 +273,8 @@
         ['▣', 'Buyurtmalar', 1],
         ['＋', 'Menyu', 2],
         ['♙', 'Ofitsiantlar', 3],
-        ['▤', 'Statistika', 4]
+        ['▤', 'Statistika', 4],
+        ['▦', 'Stol QR', 5]
       ];
       bottomNav.innerHTML = nav.map(x => `
         <button class="navitem ${tab === x[2] ? 'active' : ''}" onclick="tab=${x[2]};render()">
@@ -281,7 +283,7 @@
         </button>
       `).join('');
 
-      const views = [home, orders, menu, waiters, stats, categories];
+      const views = [home, orders, menu, waiters, stats, tableQrs, categories];
       app.innerHTML = views[tab] ? views[tab]() : home();
     }
 
@@ -478,6 +480,71 @@
       if (!confirm('Taomni menyudan o‘chirasizmi?')) return;
       await api('/api/admin/menu/' + id, 'DELETE');
       await load();
+    }
+
+    function tableQrs() {
+      return `
+        <div class="stat">
+          <h3 class="gold" style="margin-top:0">Stollar uchun QR kodlar</h3>
+          <p style="color:#d8c29d;font-size:13px">Har bir stolga alohida QR kod yarating. Mijoz telefonida skanerlab menyuni ochadi va stol raqami avtomatik belgilanadi.</p>
+          <label for="qrTable" style="display:block;margin:12px 0 6px">Stol raqami</label>
+          <input id="qrTable" maxlength="20" value="1" placeholder="Masalan: 1 yoki VIP-1">
+          <button class="btn" style="width:100%" onclick="makeTableQr()">QR kod yaratish</button>
+          <div id="qrResult" style="margin-top:18px"></div>
+        </div>
+      `;
+    }
+
+    async function makeTableQr() {
+      const table = document.getElementById('qrTable').value.trim();
+      if (!table) return alert('Stol raqamini kiriting');
+      const result = document.getElementById('qrResult');
+      result.innerHTML = '<p style="color:#d8c29d">QR kod tayyorlanmoqda...</p>';
+      try {
+        const data = await api('/api/admin/table-qr/' + encodeURIComponent(table));
+        if (!data.url) throw new Error(data.error || 'QR havola olinmadi');
+        result.innerHTML = `
+          <div style="background:#fff;color:#17100a;border-radius:12px;padding:16px;text-align:center">
+            <h3 style="margin:0 0 12px">ORZU — STOL ${String(data.table).replace(/[&<>"']/g, '')}</h3>
+            <div id="qrCanvas" style="display:flex;justify-content:center;min-height:220px;align-items:center"></div>
+            <p style="font-size:11px;word-break:break-all;margin:12px 0">${data.url}</p>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center">
+              <button class="btn" onclick="copyTableQr()">Havolani nusxalash</button>
+              <button class="btn" onclick="printTableQr()">QR kodni chop etish</button>
+            </div>
+          </div>
+        `;
+        window.currentTableQrUrl = data.url;
+        window.currentTableQrTable = data.table;
+        if (window.QRCode) {
+          new QRCode(document.getElementById('qrCanvas'), { text: data.url, width: 210, height: 210, correctLevel: QRCode.CorrectLevel.M });
+        } else {
+          document.getElementById('qrCanvas').innerHTML = '<p style="color:#9b2c2c">QR kutubxonasi yuklanmadi. Internetni tekshirib qayta urinib ko‘ring.</p>';
+        }
+      } catch (e) {
+        result.innerHTML = '';
+        alert('QR yaratilmadi: ' + (e.message || e));
+      }
+    }
+
+    async function copyTableQr() {
+      if (!window.currentTableQrUrl) return;
+      try { await navigator.clipboard.writeText(window.currentTableQrUrl); alert('QR havolasi nusxalandi'); }
+      catch { prompt('QR havolasini nusxalang:', window.currentTableQrUrl); }
+    }
+
+    function printTableQr() {
+      const url = window.currentTableQrUrl;
+      if (!url) return;
+      const table = window.currentTableQrTable || '';
+      const canvas = document.querySelector('#qrCanvas canvas');
+      const image = document.querySelector('#qrCanvas img');
+      const src = canvas ? canvas.toDataURL('image/png') : (image ? image.src : '');
+      if (!src) return alert('QR rasmi hali tayyor emas');
+      const w = window.open('', '_blank', 'width=500,height=650');
+      if (!w) return alert('Chop etish oynasi bloklandi. Brauzerda pop-upga ruxsat bering.');
+      w.document.write('<!doctype html><html><head><title>ORZU stol QR</title><style>body{font-family:Arial;text-align:center;padding:30px}img{width:280px;height:280px}h1{font-size:26px}</style></head><body><h1>ORZU RESTORANI</h1><h2>STOL ' + String(table).replace(/[&<>"']/g, '') + '</h2><img src="' + src + '"><p>Menyuni ko‘rish va buyurtma berish uchun skanerlang</p></body></html>');
+      w.document.close(); w.focus(); w.print();
     }
 
     function categories() {
