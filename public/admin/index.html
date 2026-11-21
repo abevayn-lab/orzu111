@@ -740,7 +740,6 @@
           </div>
         </div>
         <div class="stat">
-          <h3 class="gold" style="margin-top:0"<div class="stat">
           <h3 class="gold" style="margin-top:0">Bo‘limlar bo‘yicha sotuv — aylana grafik</h3>
           <p style="color:#d8c29d;font-size:12px">To‘langan buyurtmalardagi taomlar soni bo‘yicha hisoblanadi.</p>
           ${donutMarkup(categoryRows,'Hozircha bo‘limlar bo‘yicha sotuv yo‘q.')}
@@ -750,7 +749,8 @@
           <select onchange="setStatsCategory(this.value)"><option value="all" ${statsCatFilter==='all'?'selected':''}>Barcha bo‘limlar</option>${categoryOptions}</select>
           ${selectedCategory?donutMarkup(selectedDishes,'Bu bo‘limda hozircha sotuv yo‘q.'):'<p style="color:#d8c29d;font-size:12px">Grafikni ko‘rish uchun menyu bo‘limini tanlang.</p>'}
         </div>
-        >Eng ko‘p sotilgan taomlar</h3>
+        <div class="stat">
+          <h3 class="gold" style="margin-top:0">Eng ko‘p sotilgan taomlar</h3>
           ${topDishes.length ? tbl(['Taom nomi','Soni','Savdo'],topDishes.map(([name,v])=>[name,v.qty+' ta',f(v.sum)])) : '<p style="color:#c0b5a3">Hozircha to‘langan savdo yo‘q.</p>'}
         </div>
         <div class="stat">
