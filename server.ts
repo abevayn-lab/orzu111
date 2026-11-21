@@ -386,7 +386,10 @@ app.post('/api/order', async (q, s) => {
   if (!table || table.length > 20) return s.status(400).json({ error: 'Stol raqami noto‘g‘ri' });
   // Backward compatibility: previously printed table QR codes contain ?table=<number>
   // but no signed token. Keep those public table links working while validating all new signed QR codes.
-  const legacyTableQr = q.body.legacyQr === true && !qrToken && /^[A-Za-z0-9_-]{1,20}$/.test(table);
+  // Older printed table QR codes have no signed token. They can only identify
+  // the table, so accept a token-less request for a syntactically valid table.
+  // If a token is supplied, it must always be valid (never downgrade invalid signed QR).
+  const legacyTableQr = !qrToken && /^[A-Za-z0-9_-]{1,20}$/.test(table);
   if (!validTableQrToken(table, qrToken) && !legacyTableQr) {
     return s.status(403).json({ error: 'Buyurtma faqat stol QR kodi orqali beriladi. Stol ustidagi QR kodni skanerlang.' });
   }
