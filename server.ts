@@ -683,6 +683,12 @@ app.post('/api/cashier/pay', cashier, async (q, s) => {
   if (!o) return s.status(404).json({ error: 'Buyurtma topilmadi' });
   if (o.status === 'paid') return s.status(409).json({ error: 'Bu buyurtma avval to‘langan', order: o });
 
+  const previous = {
+    status: o.status,
+    paidAt: o.paidAt,
+    paidBy: o.paidBy,
+    paymentMethod: o.paymentMethod
+  };
   o.status = 'paid';
   o.paidAt = Date.now();
   o.paidBy = String(q.body.cashierName || 'Kassir').slice(0, 60);
@@ -691,10 +697,11 @@ app.post('/api/cashier/pay', cashier, async (q, s) => {
     await save('orders');
   } catch (error) {
     console.error('Kassir to‘lovini saqlashda xato:', error);
-    o.status = 'pending';
-    delete o.paidAt;
-    delete o.paidBy;
-    delete o.paymentMethod;
+    o.status = previous.status;
+    for (const key of ['paidAt', 'paidBy', 'paymentMethod']) {
+      if (previous[key] === undefined) delete o[key];
+      else o[key] = previous[key];
+    }
     return s.status(500).json({ error: 'To‘lov bazaga saqlanmadi. Qayta urinib ko‘ring.' });
   }
   s.json({ ok: true, order: o });
