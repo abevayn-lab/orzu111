@@ -260,7 +260,7 @@
       try {
         D = await api('/api/admin/data');
         bottomNav.style.display = 'grid';
-        if (bg && (tab === 2 || tab === 5 || /^(INPUT|SELECT|TEXTAREA)$/.test((document.activeElement || {}).tagName || ''))) return;
+        if (bg && (tab === 2 || tab === 5 || tab === 6 || /^(INPUT|SELECT|TEXTAREA)$/.test((document.activeElement || {}).tagName || ''))) return;
         render();
       } catch (e) {
         // Handled in api()
@@ -274,7 +274,8 @@
         ['＋', 'Menyu', 2],
         ['♙', 'Ofitsiantlar', 3],
         ['▤', 'Statistika', 4],
-        ['▦', 'Stol QR', 5]
+        ['▦', 'Stol QR', 5],
+        ['☷', 'Bo‘limlar', 6]
       ];
       bottomNav.innerHTML = nav.map(x => `
         <button class="navitem ${tab === x[2] ? 'active' : ''}" onclick="tab=${x[2]};render()">
@@ -335,7 +336,7 @@
             <button class="btn" onclick="tab=2;render()">＋ Menyu boshqaruvi</button>
             <button class="btn" onclick="tab=3;render()">＋ Ofitsiantlar</button>
             <button class="btn" onclick="tab=4;render()">▤ To‘liq hisobot</button>
-            <button class="btn" onclick="tab=5;render()">📂 Bo‘limlar (Kategoriyalar)</button>
+            <button class="btn" onclick="tab=6;render()">📂 Bo‘limlar (Kategoriyalar)</button>
           </div>
         </div>
       `;
@@ -370,7 +371,7 @@
         <div class="stat">
           <div style="display:flex;justify-content:space-between;align-items:center">
             <h3 class="gold" style="margin:0">${edit ? 'Taomni tahrirlash' : 'Yangi taom qo‘shish'}</h3>
-            <button class="btn sm" onclick="tab=5;render()">📂 Bo‘limlar</button>
+            <button class="btn sm" onclick="tab=6;render()">📂 Bo‘limlar</button>
           </div>
           <input id="mn" placeholder="Taom nomi (masalan: Manti)" value="${edit ? edit.name : ''}">
           <input id="mp" type="number" placeholder="Narxi so‘mda (masalan: 35000)" value="${edit ? edit.price : ''}">
@@ -550,23 +551,44 @@
     function categories() {
       return `
         <div class="stat">
-          <h3 class="gold" style="margin-top:0">Yangi menyu bo‘limi qo‘shish</h3>
-          <p style="color:#d8c29d;font-size:13px">Masalan: Milliy taomlar, Ichimliklar, Shirinliklar.</p>
-          <input id="cn" maxlength="40" placeholder="Bo‘lim nomi">
-          <button class="btn" onclick="addCategory()">+ Bo‘lim qo‘shish</button>
-        </div>
-        <div class="stat">
-          <h3 class="gold" style="margin-top:0">Mavjud bo‘limlar</h3>
+          <h3 class="gold" style="margin-top:0">Menyu bo‘limlari tartibi</h3>
+          <p style="color:#d8c29d;font-size:13px">Bu yerdagi ketma-ketlik mijoz telefonidagi menyuda ham xuddi shunday ko‘rinadi. Yuqoriga/pastga tugmalari bilan joyini o‘zgartiring.</p>
           <div style="display:grid;gap:8px">
             ${D.cats.map((x, i) => `
-              <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #4a341b">
-                <span><b>${i + 1}.</b> ${x}</span>
+              <div style="display:flex;align-items:center;gap:8px;padding:10px;border:1px solid #4a341b;border-radius:12px;background:#17100b">
+                <b style="min-width:24px;color:var(--g2)">${i + 1}.</b>
+                <span style="flex:1;font-weight:700">${x}</span>
+                <button class="btn sm" ${i === 0 ? 'disabled' : ''} onclick="moveCategory(${i},-1)" aria-label="Yuqoriga">↑</button>
+                <button class="btn sm" ${i === D.cats.length - 1 ? 'disabled' : ''} onclick="moveCategory(${i},1)" aria-label="Pastga">↓</button>
                 <button class="btn sm red" onclick="removeCategory(${i})">O‘chirish</button>
               </div>
             `).join('')}
           </div>
         </div>
+        <div class="stat">
+          <h3 class="gold" style="margin-top:0">Yangi menyu bo‘limi qo‘shish</h3>
+          <p style="color:#d8c29d;font-size:13px">Masalan: 1-taom, 2-taom, Salatlar, Ichimliklar.</p>
+          <input id="cn" maxlength="40" placeholder="Bo‘lim nomi">
+          <button class="btn" onclick="addCategory()">+ Bo‘lim qo‘shish</button>
+        </div>
       `;
+    }
+
+    async function moveCategory(index, direction) {
+      const order = D.cats.slice();
+      const target = index + direction;
+      if (target < 0 || target >= order.length) return;
+      [order[index], order[target]] = [order[target], order[index]];
+      try {
+        const result = await api('/api/admin/categories/reorder', 'POST', { order });
+        if (result.error) throw new Error(result.error);
+        D.cats = result.cats;
+        await load();
+        tab = 6;
+        render();
+      } catch (error) {
+        alert('Bo‘lim tartibi saqlanmadi: ' + error.message);
+      }
     }
 
     async function addCategory() {
@@ -648,38 +670,80 @@
 
     function stats() {
       const since = Number(D.statsResetAt || 0);
-      const orders = (D.history || D.orders || []).filter(o => Number(o.time || 0) >= since && o.status === 'paid');
-      const totalSum = orders.reduce((n, o) => n + Number(o.total || 0), 0);
+      const all = (D.history || D.orders || []).filter(o => Number(o.time || 0) >= since);
+      const paid = all.filter(o => o.status === 'paid');
+      const pending = all.filter(o => o.status !== 'paid');
+      const totalSum = paid.reduce((n, o) => n + Number(o.total || 0), 0);
+      const soldQty = paid.reduce((n, o) => n + (o.items || []).reduce((q, item) => q + Number(item.qty || 0), 0), 0);
+      const average = paid.length ? Math.round(totalSum / paid.length) : 0;
+      const byDish = {};
+      const byWaiter = {};
+      const byDay = {};
+      paid.forEach(o => {
+        (o.items || []).forEach(item => {
+          const key = String(item.name || 'Noma’lum');
+          if (!byDish[key]) byDish[key] = { qty: 0, sum: 0 };
+          byDish[key].qty += Number(item.qty || 0);
+          byDish[key].sum += Number(item.qty || 0) * Number(item.price || 0);
+        });
+        const waiter = String(o.waiterName || 'Noma’lum');
+        if (!byWaiter[waiter]) byWaiter[waiter] = { count: 0, sum: 0 };
+        byWaiter[waiter].count += 1;
+        byWaiter[waiter].sum += Number(o.total || 0);
+        const date = new Date(Number(o.paidAt || o.time || 0)).toLocaleDateString('uz-UZ');
+        if (!byDay[date]) byDay[date] = { count: 0, sum: 0 };
+        byDay[date].count += 1;
+        byDay[date].sum += Number(o.total || 0);
+      });
+      const topDishes = Object.entries(byDish).sort((a,b) => b[1].qty-a[1].qty).slice(0,10);
+      const waiterRows = Object.entries(byWaiter).sort((a,b) => b[1].sum-a[1].sum);
+      const dayRows = Object.entries(byDay).sort((a,b) => {
+        const [da,ma,ya] = a[0].split('.').map(Number);
+        const [db,mb,yb] = b[0].split('.').map(Number);
+        return new Date(yb,mb-1,db)-new Date(ya,ma-1,da);
+      }).slice(0,14);
       return `
         <div class="stat">
-          <h2 class="gold" style="margin-top:0">Statistika va Hisobot</h2>
+          <h2 class="gold" style="margin-top:0">Umumiy statistika va hisobot</h2>
+          <p style="color:#d8c29d;font-size:12px">Hisobot statistika oxirgi marta yangidan boshlangan vaqtdan hisoblanadi. Buyurtmalar tarixi saqlanadi.</p>
           <div class="home-stats">
-            <div class="home-stat">
-              <span>To‘langan cheklar</span>
-              <b>${orders.length} ta</b>
-            </div>
-            <div class="home-stat">
-              <span>Jami tushum</span>
-              <b style="font-size:16px">${f(totalSum)}</b>
-            </div>
-            <div class="home-stat">
-              <span>O‘rtacha chek</span>
-              <b style="font-size:16px">${f(orders.length ? Math.round(totalSum / orders.length) : 0)}</b>
-            </div>
+            <div class="home-stat"><span>Jami buyurtmalar</span><b>${all.length} ta</b></div>
+            <div class="home-stat"><span>To‘langan cheklar</span><b>${paid.length} ta</b></div>
+            <div class="home-stat"><span>Kutilayotganlar</span><b>${pending.length} ta</b></div>
+            <div class="home-stat"><span>Jami tushum</span><b style="font-size:16px">${f(totalSum)}</b></div>
+            <div class="home-stat"><span>O‘rtacha chek</span><b style="font-size:16px">${f(average)}</b></div>
+            <div class="home-stat"><span>Sotilgan mahsulotlar</span><b>${soldQty} ta</b></div>
           </div>
-          <button class="btn red" style="width:100%;margin-top:14px" onclick="clearStats()">
-            Statistikani noldan boshlash
-          </button>
+        </div>
+        <div class="stat">
+          <h3 class="gold" style="margin-top:0">Eng ko‘p sotilgan taomlar</h3>
+          ${topDishes.length ? tbl(['Taom nomi','Soni','Savdo'],topDishes.map(([name,v])=>[name,v.qty+' ta',f(v.sum)])) : '<p style="color:#c0b5a3">Hozircha to‘langan savdo yo‘q.</p>'}
+        </div>
+        <div class="stat">
+          <h3 class="gold" style="margin-top:0">Ofitsiantlar bo‘yicha savdo</h3>
+          ${waiterRows.length ? tbl(['Ofitsiant','Cheklar','Savdo'],waiterRows.map(([name,v])=>[name,v.count+' ta',f(v.sum)])) : '<p style="color:#c0b5a3">Ma’lumot yo‘q.</p>'}
+        </div>
+        <div class="stat">
+          <h3 class="gold" style="margin-top:0">Kunlar bo‘yicha tushum</h3>
+          ${dayRows.length ? tbl(['Sana','Cheklar','Tushum'],dayRows.map(([date,v])=>[date,v.count+' ta',f(v.sum)])) : '<p style="color:#c0b5a3">Ma’lumot yo‘q.</p>'}
+        </div>
+        <div class="stat">
+          <h3 class="gold" style="margin-top:0">Buyurtmalar holati</h3>
+          ${tbl(['Ko‘rsatkich','Soni'],[['Jami buyurtma',all.length+' ta'],['To‘langan',paid.length+' ta'],['To‘lov kutilmoqda',pending.length+' ta'],['Ofitsiantlar', (D.waiters||[]).length+' ta'],['Menyudagi taomlar',(D.menu||[]).length+' ta'],['Bo‘limlar',(D.cats||[]).length+' ta']])}
+        </div>
+        <div class="stat">
+          <button class="btn red" style="width:100%" onclick="clearStats()">Statistikani noldan boshlash</button>
+          <p style="color:#d8c29d;font-size:11px">Bu amal buyurtmalarni o‘chirmaydi — faqat yangi hisobot davrini boshlaydi.</p>
         </div>
       `;
     }
 
     async function clearStats() {
-      if (!confirm('DIQQAT! Statistikani tozalash bilan BARCHA buyurtmalar ro‘yxati ham butunlay o‘chadi. Ofitsiant va kassir sahifalaridagi buyurtmalar ham yo‘qoladi. Davom etasizmi?')) return;
+      if (!confirm('Yangi statistika davrini boshlaysizmi? Eski buyurtmalar tarixi saqlanadi, faqat hisobot yangi davrdan hisoblanadi.')) return;
       const result = await api('/api/admin/reset-stats', 'POST', {});
       if (!result.ok) return alert(result.error || 'Tozalash amalga oshmadi');
       await load();
-      alert('Statistika va buyurtmalar ro‘yxati tozalandi!');
+      alert('Yangi statistika davri boshlandi. Eski buyurtmalar tarixi saqlanib qoldi!');
     }
 
     load();
