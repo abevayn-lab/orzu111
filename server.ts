@@ -873,6 +873,27 @@ app.post('/api/admin/category', adm, (q, s) => {
   s.json({ ok: 1, cats: CFG.cats });
 });
 
+// ADMIN CATEGORY REORDER — preserve each menu item's category while changing display order.
+app.post('/api/admin/categories/reorder', adm, async (q, s) => {
+  const requested = q.body && q.body.order;
+  if (!Array.isArray(requested) || requested.length !== CFG.cats.length ||
+      requested.some(name => typeof name !== 'string') ||
+      new Set(requested).size !== CFG.cats.length ||
+      CFG.cats.some(name => !requested.includes(name))) {
+    return s.status(400).json({ error: 'Bo‘limlar tartibi noto‘g‘ri yuborildi' });
+  }
+  const previous = CFG.cats.slice();
+  const nextIndex = new Map(requested.map((name, index) => [name, index]));
+  CFG.menu = CFG.menu.map(item => {
+    const oldCategory = previous[Number(item.cat)];
+    const newCategory = nextIndex.get(oldCategory);
+    return { ...item, cat: newCategory === undefined ? 0 : newCategory };
+  });
+  CFG.cats = requested.slice();
+  await save('cfg');
+  s.json({ ok: true, cats: CFG.cats });
+});
+
 // ADMIN CATEGORY DELETE
 app.delete('/api/admin/category/:index', adm, (q, s) => {
   const index = Number(q.params.index);
@@ -925,10 +946,10 @@ app.post('/api/admin/menu', adm, (q, s) => {
 
 // ADMIN RESET STATS AND CLEAR ALL ORDERS
 app.post('/api/admin/reset-stats', adm, async (_q, s) => {
-  O.list = [];
+  // Preserve the complete order history; only move the reporting start point.
   O.statsResetAt = Date.now();
   await save('orders');
-  s.json({ ok: true, statsResetAt: O.statsResetAt, ordersCleared: true });
+  s.json({ ok: true, statsResetAt: O.statsResetAt, ordersCleared: false });
 });
 
 // ADMIN DELETE MENU
