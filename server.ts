@@ -242,26 +242,27 @@ async function load() {
   saveLocally();
 }
 
-function saveLocally() {
+function saveLocally(): boolean {
   try {
     fs.writeFileSync(LF, JSON.stringify({ CFG, O }, null, 2));
+    return true;
   } catch (e) {
     console.error('Error writing data.json:', e);
+    return false;
   }
 }
 
 // DATABASE SAVE
-let q0: Promise<any> = Promise.resolve();
-function save(k: 'cfg' | 'orders') {
-  saveLocally();
-  if (!SU || !SK) {
-    return Promise.resolve();
-  }
+let q0: Promise<boolean> = Promise.resolve(true);
+function save(k: 'cfg' | 'orders'): Promise<boolean> {
+  if (!saveLocally()) return Promise.resolve(false);
+  if (!SU || !SK) return Promise.resolve(true);
+
   const body = JSON.stringify({
     key: k,
     data: k === 'cfg' ? CFG : O
   });
-  const operation = q0.catch(() => {}).then(async () => {
+  const operation = q0.catch(() => false).then(async () => {
     const r = await fetch(`${SU}/rest/v1/store`, {
       method: 'POST',
       headers: {
@@ -270,7 +271,14 @@ function save(k: 'cfg' | 'orders') {
       },
       body
     });
-    if (!r.ok) console.warn('Supabase save error:', await r.text());
+    if (!r.ok) {
+      console.error('Supabase save error:', await r.text());
+      return false;
+    }
+    return true;
+  }).catch(error => {
+    console.error('Supabase save request failed:', error);
+    return false;
   });
   q0 = operation;
   return operation;
@@ -336,7 +344,7 @@ app.get('/api/menu', (_q, s) => {
 });
 
 // CUSTOMER ORDER
-app.post('/api/order', (q, s) => {
+app.post('/api/order', async (q, s) => {
   const table = String(q.body.table || '').trim();
   const items: OrderItem[] = [];
   if (!table) {
@@ -384,7 +392,13 @@ app.post('/api/order', (q, s) => {
     time: Date.now()
   };
   O.list.push(o);
-  save('orders');
+  const persisted = await save('orders');
+  if (!persisted) {
+    O.list = O.list.filter(existing => existing.id !== o.id);
+    O.seq = Math.max(0, O.seq - 1);
+    saveLocally();
+    return s.status(500).json({ error: 'Buyurtma bazaga saqlanmadi. Qayta urinib ko‘ring.' });
+  }
   s.json({ ok: true, id: o.id });
 });
 
@@ -544,7 +558,12 @@ app.post('/api/cashier/print', cashier, async (q: Request, s: Response) => {
     order: { ...o }
   };
   O.printJobs.push(job);
-  await save('orders');
+  const persisted = await save('orders');
+  if (!persisted) {
+    O.printJobs = O.printJobs.filter(existing => existing.id !== job.id);
+    saveLocally();
+    return s.status(500).json({ error: 'Chek navbatga saqlanmadi. Qayta urinib ko‘ring.' });
+  }
   s.json({ ok: true, message: 'Chek printer navbatiga qo‘yildi', jobId: job.id });
 });
 
@@ -671,9 +690,17 @@ app.post('/api/cashier/update-order', cashier, async (q: Request, s: Response) =
   }
 
   if (!updatedItems.length) return s.status(400).json({ error: 'Buyurtmada kamida bitta mahsulot qolishi kerak' });
+  const previousItems = order.items;
+  const previousTotal = order.total;
   order.items = updatedItems;
   order.total = Math.round(updatedItems.reduce((sum, item) => sum + Number(item.price || 0) * Number(item.qty || 0), 0));
-  await save('orders');
+  const persisted = await save('orders');
+  if (!persisted) {
+    order.items = previousItems;
+    order.total = previousTotal;
+    saveLocally();
+    return s.status(500).json({ error: 'O‘zgarishlar bazaga saqlanmadi. Buyurtma avvalgi holatiga qaytarildi.' });
+  }
   s.json({ ok: true, order });
 });
 
@@ -694,7 +721,8 @@ app.post('/api/cashier/pay', cashier, async (q, s) => {
   o.paidBy = String(q.body.cashierName || 'Kassir').slice(0, 60);
   o.paymentMethod = String(q.body.paymentMethod || 'Naqd').slice(0, 30);
   try {
-    await save('orders');
+    const persisted = await save('orders');
+    if (!persisted) throw new Error('Bazaga yozish muvaffaqiyatsiz tugadi');
   } catch (error) {
     console.error('Kassir to‘lovini saqlashda xato:', error);
     o.status = previous.status;
@@ -704,7 +732,8 @@ app.post('/api/cashier/pay', cashier, async (q, s) => {
     else o.paidBy = previous.paidBy;
     if (previous.paymentMethod === undefined) delete o.paymentMethod;
     else o.paymentMethod = previous.paymentMethod;
-    return s.status(500).json({ error: 'To‘lov bazaga saqlanmadi. Qayta urinib ko‘ring.' });
+    saveLocally();
+    return s.status(500).json({ error: 'To‘lov bazaga saqlanmadi. Buyurtma avvalgi holatiga qaytarildi. Qayta urinib ko‘ring.' });
   }
   s.json({ ok: true, order: o });
 });
