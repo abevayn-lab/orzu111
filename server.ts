@@ -384,7 +384,10 @@ app.post('/api/order', async (q, s) => {
   const qrToken = String(q.body.qr || '');
   const items: OrderItem[] = [];
   if (!table || table.length > 20) return s.status(400).json({ error: 'Stol raqami noto‘g‘ri' });
-  if (!validTableQrToken(table, qrToken)) {
+  // Backward compatibility: previously printed table QR codes contain ?table=<number>
+  // but no signed token. Keep those public table links working while validating all new signed QR codes.
+  const legacyTableQr = q.body.legacyQr === true && !qrToken && /^[A-Za-z0-9_-]{1,20}$/.test(table);
+  if (!validTableQrToken(table, qrToken) && !legacyTableQr) {
     return s.status(403).json({ error: 'Buyurtma faqat stol QR kodi orqali beriladi. Stol ustidagi QR kodni skanerlang.' });
   }
   for (const i of q.body.items || []) {
