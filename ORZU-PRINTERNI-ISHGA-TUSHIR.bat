@@ -22,7 +22,7 @@ powershell -NoProfile -Command "try { Invoke-RestMethod -Uri 'http://127.0.0.1:1
 
 if errorlevel 1 (
   echo Printer xizmati ishga tushirilmoqda...
-  start "ORZU PRINTER XIZMATI" cmd /k "cd /d ""%~dp0"" && node orzu-printer-bridge.js %*"
+  start "ORZU PRINTER XIZMATI" cmd /k "cd /d ""%~dp0"" && node orzu-printer-bridge.cjs %*"
   timeout /t 3 /nobreak >nul
 ) else (
   echo Printer xizmati avvaldan ishlab turibdi.
