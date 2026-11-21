@@ -40,16 +40,15 @@ function makeReceipt(o) {
     Buffer.from([0x1b, 0x61, 0x01]),
     Buffer.from([0x1b, 0x45, 0x01]),
     Buffer.from([0x1d, 0x21, 0x10]),
+    line('TASHRIFINGIZ UCHUN RAHMAT!'),
+    Buffer.from([0x1b, 0x45, 0x00]),
+    line('================================================'),
+    Buffer.from([0x1d, 0x21, 0x10]),
     line('ORZU'),
     Buffer.from([0x1d, 0x21, 0x00]),
     line('RESTAURANT'),
     line('ARNASOY'),
-    Buffer.from([0x1b, 0x45, 0x00]),
-    Buffer.from([0x1b, 0x61, 0x01]),
-    Buffer.from([0x1b, 0x45, 0x01]),
-    line('TASHRIFINGIZ UCHUN RAHMAT!'),
-    Buffer.from([0x1b, 0x45, 0x00]),
-    line('================================')
+    Buffer.from([0x1b, 0x45, 0x00])
   ];
 
   out.push(
@@ -60,7 +59,7 @@ function makeReceipt(o) {
     line('Stol: ' + (o.table ?? '-')),
     line('Ofitsiant: ' + (o.waiterName || '-')),
     line(new Date(o.paidAt || o.time || Date.now()).toLocaleString('uz-UZ')),
-    line('--------------------------------')
+    line('------------------------------------------------')
   );
 
   const items = Array.isArray(o.items) ? o.items : [];
@@ -73,7 +72,7 @@ function makeReceipt(o) {
   }, 0);
 
   for (const it of items) {
-    const name = esc(it.name || 'Mahsulot').slice(0, 32);
+    const name = esc(it.name || 'Mahsulot').slice(0, 48);
     const qty = Math.max(0, Number(it.qty) || 0);
     const price = Math.max(0, Number(it.price) || 0);
     const total = money(price * qty);
@@ -90,7 +89,7 @@ function makeReceipt(o) {
     line('JAMI: ' + money(receiptTotal)),
     Buffer.from([0x1b, 0x45, 0x00]),
     line('Tolov: ' + esc(o.paymentMethod || 'Naqd')),
-    line('================================'),
+    line('================================================'),
     Buffer.from([0x1b, 0x61, 0x01]),
     line(''),
     Buffer.from([0x1d, 0x56, 0x42, 0x00])
