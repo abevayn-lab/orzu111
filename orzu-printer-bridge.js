@@ -1,4 +1,3 @@
-
 // ORZU local thermal-printer bridge for Windows laptops
 // Run: node orzu-printer-bridge.cjs
 
