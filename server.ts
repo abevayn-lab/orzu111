@@ -721,6 +721,36 @@ app.post('/api/cashier/settings', cashier, (q, s) => {
   s.json({ ok: true, settings: O.cashierSettings });
 });
 
+// CASHIER CREATE ORDER: cashier can open an order for any table without requiring an online waiter.
+app.post('/api/cashier/create-order', cashier, async (q: Request, s: Response) => {
+  const table = String(q.body.table || '').trim();
+  if (!table || table.length > 20 || !/^[A-Za-z0-9_-]+$/.test(table)) return s.status(400).json({ error: 'Stol raqami noto‘g‘ri' });
+  if (!Array.isArray(q.body.items) || !q.body.items.length) return s.status(400).json({ error: 'Menyu mahsulotlarini tanlang' });
+  const items: OrderItem[] = [];
+  for (const row of q.body.items) {
+    const menu = CFG.menu.find(m => Number(m.id) === Number(row.menuId) && !m.hidden);
+    const qty = Number(row.qty);
+    if (!menu || !Number.isInteger(qty) || qty < 1 || qty > 99) return s.status(400).json({ error: 'Mahsulot yoki miqdor noto‘g‘ri' });
+    const existing = items.find(i => i.name === menu.name && i.price === Number(menu.price));
+    if (existing) existing.qty += qty;
+    else items.push({ name: menu.name, price: Number(menu.price), img: menu.img || '', qty });
+  }
+  const order: Order = {
+    id: ++O.seq, table, waiter: 0, waiterName: 'Kassir', items,
+    total: Math.round(items.reduce((sum, item) => sum + item.price * item.qty, 0)),
+    status: 'new', time: Date.now()
+  };
+  O.list.push(order);
+  const persisted = await save('orders');
+  if (!persisted) {
+    O.list = O.list.filter(x => x.id !== order.id);
+    O.seq = Math.max(0, O.seq - 1);
+    saveLocally();
+    return s.status(500).json({ error: 'Buyurtma bazaga saqlanmadi. Qayta urinib ko‘ring.' });
+  }
+  s.json({ ok: true, order });
+});
+
 // CASHIER EDIT ORDER: faqat to‘lanmagan buyurtma tarkibini o‘zgartirish.
 app.post('/api/cashier/update-order', cashier, async (q: Request, s: Response) => {
   const order = O.list.find(x => String(x.id) === String(q.body.orderId));

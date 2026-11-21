@@ -217,6 +217,10 @@
     .edit-add select,.edit-add input{min-width:0;width:100%;margin:0;padding:10px;background:#0b0907;color:white;border:1px solid #8a642c;border-radius:9px}
     @media(max-width:520px){.edit-add{grid-template-columns:1fr 70px}.edit-add button{grid-column:1/-1}.edit-row{grid-template-columns:minmax(0,1fr) auto}.edit-remove{grid-column:1/-1;justify-self:end}}
   
+    
+    .table-icon{display:grid;place-items:center}.table-number{font-size:13px;font-weight:900;color:#111;z-index:1}.floor-table.busy .table-number{color:#fff}
+    #newOrderModal .edit-panel{color:#222;background:#f7f7f2;border-color:#aaa}#newOrderModal h3,#newOrderModal b{color:#222!important}#newOrderModal p{color:#555}#newOrderModal select,#newOrderModal input{background:#fff;color:#222;border-color:#aaa}
+
     /* ORZU: each role opens as its own standalone app */
     .staff-portal-bar { display: none !important; }
 
@@ -383,10 +387,20 @@
         <section class="detail-panel">
           <div class="detail-title"><h2 id="selectedTableTitle">Stol tanlang</h2><span id="selectedTableStatus" class="badge paid">KASSA</span></div>
           <div id="selectedOrder" class="detail-content"><div class="empty">Buyurtmani ko‘rish uchun chap tomondan stolni tanlang</div></div>
-          <div class="quick-actions"><button class="btn dark" onclick="refresh()">↻ Yangilash</button><button class="btn dark" onclick="toggleSettings()">⚙ Printer sozlamasi</button></div>
+          <div class="quick-actions"><button class="btn" onclick="openNewOrder()">＋ Menyudan buyurtma</button><button class="btn dark" onclick="refresh()">↻ Yangilash</button><button class="btn dark" onclick="toggleSettings()">⚙ Printer sozlamasi</button></div>
         </section>
       </div>
 
+      <div id="newOrderModal" class="edit-modal hidden" onclick="if(event.target===this)closeNewOrder()">
+        <div class="edit-panel">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:12px"><h3 style="margin:0">Stolga menyudan buyurtma</h3><button class="btn dark" onclick="closeNewOrder()">✕ Yopish</button></div>
+          <p id="newOrderInfo"></p>
+          <div class="edit-add"><select id="newMenuSelect"></select><input id="newMenuQty" type="number" min="1" max="99" value="1" aria-label="Miqdor"><button class="btn" onclick="addNewMenuItem()">＋ Qo‘shish</button></div>
+          <div id="newOrderItems"></div>
+          <div class="total"><span>JAMI:</span><span id="newOrderTotal">0 so‘m</span></div>
+          <button class="btn" style="width:100%;margin-top:12px" onclick="saveNewOrder()">Buyurtmani saqlash</button>
+        </div>
+      </div>
       <div id="editModal" class="edit-modal hidden" onclick="if(event.target===this)closeEdit()">
         <div class="edit-panel">
           <div style="display:flex;justify-content:space-between;align-items:center;gap:12px"><h3 style="color:var(--g2);margin:0">Buyurtmani tahrirlash</h3><button class="btn dark" onclick="closeEdit()">✕ Yopish</button></div>
@@ -409,6 +423,7 @@
     let tab = 'pending';
     let busy = false;
     let editState = null;
+    let newOrderItems = [];
     let selectedTable = '1';
     const FLOOR_TABLES = ['1','2','3','4','5','6','7','8','9','10','K-1','K-2','K-3','K-4','Banket','Soboy'];
 
@@ -543,13 +558,42 @@
         const amount = latest ? money(latest.total) : 'Bo‘sh';
         const special = ['Banket','Soboy'].includes(table) ? ' special' : '';
         return '<button type="button" class="floor-table'+(latest?' busy':'')+(selectedTable===table?' selected':'')+special+'" onclick="selectTable(\''+esc(table).replace(/\\/g,'\\\\').replace(/'/g,"\\'")+'\')">' +
-          '<span class="table-icon'+(special?' large':'')+'"></span><span class="table-name">'+esc(table)+'</span><span class="table-meta">'+esc(amount)+'</span></button>';
+          '<span class="table-icon'+(special?' large':'')+'"><b class="table-number">'+esc(table)+'</b></span><span class="table-name">Stol '+esc(table)+'</span><span class="table-meta">'+esc(amount)+'</span></button>';
       }).join('');
       const selected = tableOrders(selectedTable);
       $('selectedTableTitle').textContent = 'Stol: ' + selectedTable;
       $('selectedTableStatus').textContent = selected.length ? (tab === 'paid' ? 'TO‘LANGAN' : 'BUYURTMA BOR') : 'BO‘SH';
       $('selectedTableStatus').className = 'badge' + (selected.length ? (tab === 'paid' ? ' paid' : '') : ' paid');
       detail.innerHTML = selected.length ? selected.map(card).join('') : '<div class="empty">Bu stolda '+(tab==='paid'?'to‘langan buyurtma':'faol buyurtma')+' yo‘q</div>';
+    }
+
+    function openNewOrder() {
+      if (tab === 'paid') return alert('To‘langanlar bo‘limida yangi buyurtma ochib bo‘lmaydi.');
+      newOrderItems = [];
+      $('newOrderInfo').textContent = 'Stol: ' + selectedTable;
+      $('newMenuSelect').innerHTML = DATA.menu.map(m => '<option value="'+Number(m.id)+'">'+esc(m.name)+' — '+money(m.price)+'</option>').join('');
+      renderNewOrderItems();
+      $('newOrderModal').classList.remove('hidden');
+    }
+    function closeNewOrder(){ $('newOrderModal').classList.add('hidden'); newOrderItems=[]; }
+    function addNewMenuItem(){
+      const id=Number($('newMenuSelect').value), qty=Number($('newMenuQty').value);
+      const menu=DATA.menu.find(m=>Number(m.id)===id);
+      if(!menu || !Number.isInteger(qty)||qty<1||qty>99) return alert('Mahsulot va miqdorni tekshiring.');
+      const found=newOrderItems.find(x=>x.menuId===id);
+      if(found) found.qty=Math.min(99,found.qty+qty); else newOrderItems.push({menuId:id,qty});
+      renderNewOrderItems();
+    }
+    function renderNewOrderItems(){
+      $('newOrderItems').innerHTML=newOrderItems.map((x,i)=>{const m=DATA.menu.find(z=>Number(z.id)===x.menuId);return m?'<div class="edit-row"><b>'+esc(m.name)+' × '+x.qty+'<small> · '+money(m.price*x.qty)+'</small></b><div class="edit-qty"><button onclick="newOrderQty('+i+',-1)">−</button><button onclick="newOrderQty('+i+',1)">＋</button></div></div>':''}).join('')||'<p class="empty">Menyudan mahsulot tanlang</p>';
+      $('newOrderTotal').textContent=money(newOrderItems.reduce((a,x)=>{const m=DATA.menu.find(z=>Number(z.id)===x.menuId);return a+(m?m.price*x.qty:0)},0));
+    }
+    function newOrderQty(i,d){if(!newOrderItems[i])return;newOrderItems[i].qty=Math.max(0,Math.min(99,newOrderItems[i].qty+d));newOrderItems=newOrderItems.filter(x=>x.qty>0);renderNewOrderItems();}
+    async function saveNewOrder(){
+      if(busy||!newOrderItems.length)return alert('Kamida bitta mahsulot tanlang.');
+      busy=true;try{const d=await api('/api/cashier/create-order','POST',{table:selectedTable,items:newOrderItems});
+        DATA.orders.unshift(d.order);updateStats();render();closeNewOrder();alert('Buyurtma saqlandi: '+money(d.order.total));
+      }catch(e){alert('Saqlashda xato: '+e.message)}finally{busy=false;}
     }
 
     function selectTable(table) {
