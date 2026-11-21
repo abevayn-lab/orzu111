@@ -698,10 +698,12 @@ app.post('/api/cashier/pay', cashier, async (q, s) => {
   } catch (error) {
     console.error('Kassir to‘lovini saqlashda xato:', error);
     o.status = previous.status;
-    for (const key of ['paidAt', 'paidBy', 'paymentMethod']) {
-      if (previous[key] === undefined) delete o[key];
-      else o[key] = previous[key];
-    }
+    if (previous.paidAt === undefined) delete o.paidAt;
+    else o.paidAt = previous.paidAt;
+    if (previous.paidBy === undefined) delete o.paidBy;
+    else o.paidBy = previous.paidBy;
+    if (previous.paymentMethod === undefined) delete o.paymentMethod;
+    else o.paymentMethod = previous.paymentMethod;
     return s.status(500).json({ error: 'To‘lov bazaga saqlanmadi. Qayta urinib ko‘ring.' });
   }
   s.json({ ok: true, order: o });
