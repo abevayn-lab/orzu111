@@ -219,6 +219,7 @@
     const params = new URLSearchParams(location.search);
     let T = params.get('table') || '1';
     const QR = params.get('qr') || '';
+    const HAS_TABLE_PARAM = params.has('table');
     let QR_LOCKED = false;
     let M = [], C = [], cat = 0, cart = {};
     const f = n => Number(n || 0).toLocaleString('uz-UZ') + " so'm";
@@ -235,6 +236,9 @@
           const verify = await fetch('/api/qr/verify?table=' + encodeURIComponent(T) + '&qr=' + encodeURIComponent(QR));
           const verified = await verify.json();
           if (!verify.ok || !verified.valid) throw new Error('QR kod noto‘g‘ri. Restoran xodimidan yangi QR kodni so‘rang.');
+          QR_LOCKED = true;
+        } else if (HAS_TABLE_PARAM) {
+          // Legacy printed QR codes only carried ?table=<number>.
           QR_LOCKED = true;
         }
         const data = await fetchMenuData();
@@ -373,7 +377,7 @@
         const res = await fetch('/api/order', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ table: t, items, qr: QR })
+          body: JSON.stringify({ table: t, items, qr: QR, legacyQr: !QR && HAS_TABLE_PARAM })
         });
         const r = await res.json();
         if (r.error) return alert(r.error);
