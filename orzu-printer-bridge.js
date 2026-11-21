@@ -63,21 +63,31 @@ function makeReceipt(o) {
     line('--------------------------------')
   );
 
-  for (const it of (Array.isArray(o.items) ? o.items : [])) {
+  const items = Array.isArray(o.items) ? o.items : [];
+  // Chek jami faqat chekda chop etilayotgan mahsulot qatorlaridan hisoblanadi.
+  // Serverdagi eski/stale total yoki avvalgi 5% xizmat haqi qayta qo'shilmaydi.
+  const receiptTotal = items.reduce((sum, it) => {
+    const qty = Math.max(0, Number(it.qty) || 0);
+    const price = Math.max(0, Number(it.price) || 0);
+    return sum + price * qty;
+  }, 0);
+
+  for (const it of items) {
     const name = esc(it.name || 'Mahsulot').slice(0, 32);
     const qty = Math.max(0, Number(it.qty) || 0);
-    const total = money((Number(it.price) || 0) * qty);
+    const price = Math.max(0, Number(it.price) || 0);
+    const total = money(price * qty);
 
     out.push(
       line(name),
-      line(qty + ' x ' + money(it.price) + ' = ' + total)
+      line(qty + ' x ' + money(price) + ' = ' + total)
     );
   }
 
   out.push(
     line('--------------------------------'),
     Buffer.from([0x1b, 0x45, 0x01]),
-    line('JAMI: ' + money(o.total)),
+    line('JAMI: ' + money(receiptTotal)),
     Buffer.from([0x1b, 0x45, 0x00]),
     line('Tolov: ' + esc(o.paymentMethod || 'Naqd')),
     line('================================'),
