@@ -219,6 +219,84 @@
   
     /* ORZU: each role opens as its own standalone app */
     .staff-portal-bar { display: none !important; }
+
+    /* Desktop POS layout: cashier only */
+    html, body { min-height:100%; }
+    body { background:#e9e8df; color:#171717; padding:0; overflow-x:hidden; }
+    .wrap { max-width:none; width:100%; min-height:100vh; margin:0; padding:10px 14px 14px; }
+    #app { min-height:calc(100vh - 24px); }
+    #app > .header { background:#858585; color:#fff; margin:-10px -14px 10px; padding:10px 16px; min-height:52px; }
+    #app > .header h1 { color:#fff; font-size:22px; }
+    #app > .header small { color:#f2f2f2 !important; }
+    .card,.section,.stat { background:#f5f5f0; color:#171717; border:1px solid #c9c9c2; border-radius:3px; box-shadow:none; padding:10px; margin-bottom:10px; }
+    .stats-row { grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin-bottom:10px; }
+    .stat-box { background:#f8f8f4; border:1px solid #c8c8c0; border-radius:3px; padding:7px 10px; }
+    .stat-box span { color:#555; }
+    .stat-box b { color:#222; font-size:17px; }
+    .section { padding:8px 10px; }
+    .section h3 { color:#333 !important; font-size:14px; }
+    .waiter-shift-row { color:#222; border-color:#ddd; padding:6px; }
+    .waiter-shift-meta { color:#666; }
+    .tabs { margin:8px 0; }
+    .tab { background:#d7d7d2; color:#222; border:1px solid #b8b8b2; border-radius:2px; padding:9px; }
+    .tab.on { background:#6696e8; color:white; border-color:#5685d3; }
+    input { background:#fff; color:#222; border:1px solid #aaa; border-radius:2px; }
+    .btn { background:#62ae18; color:white; border:1px solid #51950f; border-radius:2px; }
+    .btn.dark { background:#7c94d9; color:white; border-color:#6e85c9; }
+    .cashier-workspace { display:grid; grid-template-columns:minmax(430px, 1.08fr) minmax(420px, .92fr); gap:12px; align-items:stretch; min-height:calc(100vh - 225px); }
+    .floor-panel { background:#6595e9; border:1px solid #5784d2; padding:14px; min-height:440px; display:flex; flex-direction:column; }
+    .floor-heading { display:flex; align-items:center; justify-content:space-between; color:#fff; font-weight:700; margin-bottom:12px; }
+    .floor-legend { display:flex; gap:12px; flex-wrap:wrap; font-size:11px; font-weight:500; }
+    .legend-dot { display:inline-block; width:10px; height:10px; margin-right:4px; vertical-align:middle; background:#d8e7ff; border:1px solid #fff; }
+    .legend-dot.busy { background:#62ae18; }
+    .floor-map { display:grid; grid-template-columns:repeat(4,minmax(78px,1fr)); grid-auto-rows:minmax(80px,1fr); gap:8px; flex:1; align-content:stretch; }
+    .floor-table { min-width:0; border:1px solid transparent; background:transparent; color:#101010; cursor:pointer; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; padding:5px 2px; }
+    .floor-table:hover,.floor-table.selected { background:#ffffff38; border:1px solid #fff; }
+    .floor-table.busy .table-icon { background:#62ae18; border-color:#4e9410; }
+    .table-icon { width:38px; height:30px; border:2px solid #111; border-radius:5px; position:relative; display:grid; place-items:center; background:#dce8ff; }
+    .table-icon:before,.table-icon:after { content:""; position:absolute; width:7px; height:7px; border:2px solid #111; background:transparent; }
+    .table-icon:before { left:-8px; top:9px; box-shadow:42px 0 0 -2px #dce8ff; }
+    .table-icon:after { top:-8px; left:13px; box-shadow:0 38px 0 -2px #dce8ff; }
+    .floor-table.busy .table-icon:before,.floor-table.busy .table-icon:after { background:#62ae18; }
+    .table-name { font-size:13px; font-weight:700; line-height:1.1; }
+    .table-meta { font-size:10px; color:#172b4b; text-align:center; }
+    .table-icon.large { width:54px; height:36px; }
+    .floor-table.special { grid-column:span 1; }
+    .detail-panel { min-width:0; background:#f4f3ed; border:1px solid #c9c9c2; padding:12px; display:flex; flex-direction:column; }
+    .detail-title { display:flex; justify-content:space-between; align-items:center; gap:8px; padding-bottom:8px; border-bottom:1px solid #ccc; margin-bottom:8px; }
+    .detail-title h2 { margin:0; font-size:18px; color:#222; }
+    .detail-content { overflow:auto; min-height:170px; }
+    .detail-content .order { background:#fff; color:#222; border:1px solid #c7c7c0; border-radius:3px; margin-bottom:8px; }
+    .detail-content .orderhead b,.detail-content .total { color:#222 !important; }
+    .detail-content .items { border-color:#ddd; }
+    .detail-content .order > div:first-child > div:nth-child(2) { color:#555 !important; }
+    .detail-content .item { color:#222; }
+    .detail-content .empty { color:#666; }
+    .quick-actions { display:flex; gap:8px; flex-wrap:wrap; margin-top:auto; padding-top:10px; border-top:1px solid #ccc; }
+    .quick-actions button { flex:1; min-width:130px; }
+    #settings { background:#f7f7f2; color:#222; }
+    #settings h3,#settings label { color:#333 !important; }
+    .edit-panel { background:#f7f7f2; color:#222; border-color:#aaa; }
+    .edit-panel h3,.edit-panel b { color:#222 !important; }
+    @media (min-width:1200px) and (min-height:650px) {
+      .cashier-workspace { min-height:calc(100vh - 210px); }
+      .floor-map { grid-template-columns:repeat(4,minmax(90px,1fr)); }
+    }
+    @media (max-width:900px) {
+      .cashier-workspace { grid-template-columns:1fr; }
+      .floor-panel { min-height:380px; }
+      .floor-map { grid-template-columns:repeat(4,minmax(65px,1fr)); grid-auto-rows:78px; }
+    }
+    @media (max-width:560px) {
+      .wrap { padding:8px; }
+      #app > .header { margin:-8px -8px 8px; padding:8px; }
+      #app > .header h1 { font-size:18px; }
+      .stats-row { grid-template-columns:repeat(3,minmax(0,1fr)); }
+      .stat-box b { font-size:14px; }
+      .floor-panel { padding:8px; min-height:340px; }
+      .floor-map { grid-template-columns:repeat(3,minmax(60px,1fr)); grid-auto-rows:72px; }
+    }
+
   </style>
 
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -297,7 +375,17 @@
         <button class="btn dark" onclick="refresh()">↻ Yangilash</button>
       </div>
 
-      <div id="orders" class="ordersgrid"></div>
+      <div class="cashier-workspace">
+        <section class="floor-panel">
+          <div class="floor-heading"><span>ORZU · STOLLAR</span><span class="floor-legend"><span><i class="legend-dot"></i>Bo‘sh</span><span><i class="legend-dot busy"></i>Buyurtma bor</span></span></div>
+          <div id="floorMap" class="floor-map"></div>
+        </section>
+        <section class="detail-panel">
+          <div class="detail-title"><h2 id="selectedTableTitle">Stol tanlang</h2><span id="selectedTableStatus" class="badge paid">KASSA</span></div>
+          <div id="selectedOrder" class="detail-content"><div class="empty">Buyurtmani ko‘rish uchun chap tomondan stolni tanlang</div></div>
+          <div class="quick-actions"><button class="btn dark" onclick="refresh()">↻ Yangilash</button><button class="btn dark" onclick="toggleSettings()">⚙ Printer sozlamasi</button></div>
+        </section>
+      </div>
 
       <div id="editModal" class="edit-modal hidden" onclick="if(event.target===this)closeEdit()">
         <div class="edit-panel">
@@ -321,6 +409,8 @@
     let tab = 'pending';
     let busy = false;
     let editState = null;
+    let selectedTable = '1';
+    const FLOOR_TABLES = ['1','2','3','4','5','6','7','8','9','10','K-1','K-2','K-3','K-4','Banket','Soboy'];
 
     const $ = id => document.getElementById(id);
     const money = n => Number(n || 0).toLocaleString('uz-UZ') + " so‘m";
@@ -435,13 +525,36 @@
     }
 
     function render() {
-      if (!$('orders')) return;
+      const map = $('floorMap');
+      const detail = $('selectedOrder');
+      if (!map || !detail) return;
       const q = ($('search')?.value || '').trim().toLowerCase();
-      const list = DATA.orders.filter(o => 
+      const list = DATA.orders.filter(o =>
         (tab === 'paid' ? o.status === 'paid' : o.status !== 'paid') &&
         (!q || [o.id, o.table, o.waiterName].join(' ').toLowerCase().includes(q))
       );
-      $('orders').innerHTML = list.length ? list.map(card).join('') : '<div class="empty">Bu bo‘limda buyurtma yo‘q</div>';
+      const tables = [...FLOOR_TABLES];
+      list.forEach(o => { const t=String(o.table || '').trim(); if(t && !tables.includes(t)) tables.push(t); });
+      const tableOrders = table => list.filter(o => String(o.table).trim() === table).sort((a,b)=>Number(b.time||0)-Number(a.time||0));
+      if (!tables.includes(selectedTable)) selectedTable = tables[0] || '1';
+      map.innerHTML = tables.map(table => {
+        const orders = tableOrders(table);
+        const latest = orders[0];
+        const amount = latest ? money(latest.total) : 'Bo‘sh';
+        const special = ['Banket','Soboy'].includes(table) ? ' special' : '';
+        return '<button type="button" class="floor-table'+(latest?' busy':'')+(selectedTable===table?' selected':'')+special+'" onclick="selectTable(\''+esc(table).replace(/\\/g,'\\\\').replace(/'/g,"\\'")+'\')">' +
+          '<span class="table-icon'+(special?' large':'')+'"></span><span class="table-name">'+esc(table)+'</span><span class="table-meta">'+esc(amount)+'</span></button>';
+      }).join('');
+      const selected = tableOrders(selectedTable);
+      $('selectedTableTitle').textContent = 'Stol: ' + selectedTable;
+      $('selectedTableStatus').textContent = selected.length ? (tab === 'paid' ? 'TO‘LANGAN' : 'BUYURTMA BOR') : 'BO‘SH';
+      $('selectedTableStatus').className = 'badge' + (selected.length ? (tab === 'paid' ? ' paid' : '') : ' paid');
+      detail.innerHTML = selected.length ? selected.map(card).join('') : '<div class="empty">Bu stolda '+(tab==='paid'?'to‘langan buyurtma':'faol buyurtma')+' yo‘q</div>';
+    }
+
+    function selectTable(table) {
+      selectedTable = String(table);
+      render();
     }
 
     function card(o) {
