@@ -376,7 +376,12 @@
           <select id="mc">
             ${D.cats.map((c, i) => `<option value="${i}" ${edit && edit.cat == i ? 'selected' : ''}>${c}</option>`).join('')}
           </select>
-          <input id="mi" placeholder="Rasm URL manzili (ixtiyoriy)" value="${edit && edit.img ? edit.img : ''}">
+          <label for="mifile" style="display:block;margin-top:12px;font-size:13px;color:#d8c29d">Taom rasmi (telefon galereyasidan tanlang):</label>
+          <input id="mifile" type="file" accept="image/*" onchange="previewMenuImage(this)" style="width:100%;padding:10px;background:#242424;color:#fff;border:1px solid #806b48;border-radius:8px">
+          <div style="display:flex;align-items:center;gap:12px;margin-top:8px">
+            <img id="mipreview" src="${edit && edit.img ? edit.img : ''}" alt="Tanlangan taom rasmi" style="width:88px;height:72px;object-fit:cover;border-radius:8px;border:1px solid #806b48;${edit && edit.img ? '' : 'display:none'}">
+            <small style="color:#aaa">Rasm tanlang yoki avvalgi rasmni o‘zgarishsiz qoldiring.</small>
+          </div>
           <div style="display:flex;gap:10px;margin-top:10px">
             <button class="btn" style="flex:1" onclick="saveM()">✓ Saqlash</button>
             ${edit ? '<button class="btn red" onclick="edit=null;render()">Bekor qilish</button>' : ''}
@@ -398,20 +403,69 @@
       `;
     }
 
+    function previewMenuImage(input) {
+      const file = input.files && input.files[0];
+      const preview = document.getElementById('mipreview');
+      if (!file || !preview) return;
+      if (!file.type.startsWith('image/')) {
+        input.value = '';
+        return alert('Faqat rasm faylini tanlang.');
+      }
+      if (file.size > 8 * 1024 * 1024) {
+        input.value = '';
+        return alert('Rasm hajmi 8 MB dan oshmasin.');
+      }
+      preview.src = URL.createObjectURL(file);
+      preview.style.display = 'block';
+    }
+
+    function compressMenuImage(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onerror = () => reject(new Error('Rasmni o‘qib bo‘lmadi.'));
+        reader.onload = () => {
+          const image = new Image();
+          image.onerror = () => reject(new Error('Rasm fayli ochilmadi.'));
+          image.onload = () => {
+            const maxSide = 1000;
+            const scale = Math.min(1, maxSide / Math.max(image.width, image.height));
+            const canvas = document.createElement('canvas');
+            canvas.width = Math.max(1, Math.round(image.width * scale));
+            canvas.height = Math.max(1, Math.round(image.height * scale));
+            const ctx = canvas.getContext('2d');
+            if (!ctx) return reject(new Error('Rasmni tayyorlab bo‘lmadi.'));
+            ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+            resolve(canvas.toDataURL('image/jpeg', 0.78));
+          };
+          image.src = reader.result;
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
     async function saveM() {
       const name = mn.value.trim();
       const price = Number(mp.value);
       if (!name || !price) return alert('Nom va narxni kiriting!');
-      await api('/api/admin/menu', 'POST', {
-        id: edit && edit.id,
-        name,
-        price,
-        cat: mc.value,
-        img: mi.value.trim()
-      });
-      edit = null;
-      await load();
-      alert('Taom muvaffaqiyatli saqlandi!');
+      const saveButton = document.querySelector('button[onclick="saveM()"]');
+      if (saveButton) { saveButton.disabled = true; saveButton.textContent = 'Saqlanmoqda...'; }
+      try {
+        const selectedFile = document.getElementById('mifile').files[0];
+        const img = selectedFile ? await compressMenuImage(selectedFile) : (edit && edit.img ? edit.img : '');
+        await api('/api/admin/menu', 'POST', {
+          id: edit && edit.id,
+          name,
+          price,
+          cat: mc.value,
+          img
+        });
+        edit = null;
+        await load();
+        alert('Taom muvaffaqiyatli saqlandi!');
+      } catch (error) {
+        alert('Taom saqlanmadi: ' + (error.message || error));
+        if (saveButton) { saveButton.disabled = false; saveButton.textContent = '✓ Saqlash'; }
+      }
     }
 
     function ed(id) {
