@@ -582,7 +582,8 @@ app.get('/api/cashier/data', cashier, (_q, s) => {
       name,
       shift: O.waiterShifts?.[id] || { online: false, onlineAt: 0, offlineAt: 0, sessions: [] }
     })),
-    settings: O.cashierSettings || { printerIp: '192.168.1.51' }
+    settings: O.cashierSettings || { printerIp: '192.168.1.51' },
+    menu: CFG.menu.filter(m => !m.hidden)
   });
 });
 
@@ -626,6 +627,54 @@ app.post('/api/cashier/settings', cashier, (q, s) => {
   O.cashierSettings = { ...(O.cashierSettings || {}), printerIp: ip };
   save('orders');
   s.json({ ok: true, settings: O.cashierSettings });
+});
+
+// CASHIER EDIT ORDER: faqat to‘lanmagan buyurtma tarkibini o‘zgartirish.
+app.post('/api/cashier/update-order', cashier, async (q: Request, s: Response) => {
+  const order = O.list.find(x => String(x.id) === String(q.body.orderId));
+  if (!order) return s.status(404).json({ error: 'Buyurtma topilmadi' });
+  if (order.status === 'paid') return s.status(409).json({ error: 'To‘langan buyurtmani tahrirlab bo‘lmaydi' });
+
+  const changes = Array.isArray(q.body.changes) ? q.body.changes : [];
+  const addItems = Array.isArray(q.body.addItems) ? q.body.addItems : [];
+  const qtyByIndex = new Map<number, number>();
+
+  for (const change of changes) {
+    const index = Number(change.index);
+    const qty = Number(change.qty);
+    if (!Number.isInteger(index) || index < 0 || index >= order.items.length ||
+        !Number.isInteger(qty) || qty < 0 || qty > 99 || qtyByIndex.has(index)) {
+      return s.status(400).json({ error: 'Mahsulot miqdori noto‘g‘ri' });
+    }
+    qtyByIndex.set(index, qty);
+  }
+
+  let updatedItems: OrderItem[] = order.items.flatMap((item, index) => {
+    const qty = qtyByIndex.has(index) ? qtyByIndex.get(index)! : Number(item.qty);
+    return qty > 0 ? [{ ...item, qty }] : [];
+  });
+
+  for (const addition of addItems) {
+    const menuId = Number(addition.menuId);
+    const qty = Number(addition.qty);
+    const menuItem = CFG.menu.find(m => Number(m.id) === menuId && !m.hidden);
+    if (!menuItem || !Number.isInteger(qty) || qty < 1 || qty > 99) {
+      return s.status(400).json({ error: 'Qo‘shilayotgan mahsulot yoki miqdor noto‘g‘ri' });
+    }
+    const existing = updatedItems.find(item => item.name === menuItem.name && Number(item.price) === Number(menuItem.price));
+    if (existing) {
+      if (existing.qty + qty > 99) return s.status(400).json({ error: 'Bir mahsulot miqdori 99 tadan oshmasin' });
+      existing.qty += qty;
+    } else {
+      updatedItems.push({ name: menuItem.name, price: Number(menuItem.price), img: menuItem.img || '', qty });
+    }
+  }
+
+  if (!updatedItems.length) return s.status(400).json({ error: 'Buyurtmada kamida bitta mahsulot qolishi kerak' });
+  order.items = updatedItems;
+  order.total = Math.round(updatedItems.reduce((sum, item) => sum + Number(item.price || 0) * Number(item.qty || 0), 0));
+  await save('orders');
+  s.json({ ok: true, order });
 });
 
 // CASHIER PAY

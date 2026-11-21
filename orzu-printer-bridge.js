@@ -45,6 +45,10 @@ function makeReceipt(o) {
     line('RESTAURANT'),
     line('ARNASOY'),
     Buffer.from([0x1b, 0x45, 0x00]),
+    Buffer.from([0x1b, 0x61, 0x01]),
+    Buffer.from([0x1b, 0x45, 0x01]),
+    line('TASHRIFINGIZ UCHUN RAHMAT!'),
+    Buffer.from([0x1b, 0x45, 0x00]),
     line('================================')
   ];
 
@@ -78,9 +82,6 @@ function makeReceipt(o) {
     line('Tolov: ' + esc(o.paymentMethod || 'Naqd')),
     line('================================'),
     Buffer.from([0x1b, 0x61, 0x01]),
-    Buffer.from([0x1b, 0x45, 0x01]),
-    line('TASHRIFINGIZ UCHUN RAHMAT!'),
-    Buffer.from([0x1b, 0x45, 0x00]),
     line(''),
     Buffer.from([0x1d, 0x56, 0x42, 0x00])
   );
