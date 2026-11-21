@@ -136,7 +136,7 @@
       z-index: 10000;
       left: 0; right: 0; bottom: 0;
       display: grid;
-      grid-template-columns: repeat(5, minmax(0, 1fr));
+      display: flex; justify-content: flex-start; overflow-x: auto; scrollbar-width: none;
       gap: 2px;
       padding: 8px 4px calc(8px + env(safe-area-inset-bottom));
       background: rgba(16, 12, 9, 0.96);
@@ -144,6 +144,8 @@
       backdrop-filter: blur(12px);
     }
     #bottomNav .navitem {
+      flex: 0 0 14.285%;
+      min-width: 66px;
       border: 0;
       background: transparent;
       color: #c8b99f;
