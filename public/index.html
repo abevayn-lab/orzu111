@@ -216,20 +216,57 @@
   </div>
 
   <script>
-    let T = new URLSearchParams(location.search).get('table') || '1';
+    const params = new URLSearchParams(location.search);
+    let T = params.get('table') || '1';
+    const QR = params.get('qr') || '';
+    let QR_LOCKED = false;
     let M = [], C = [], cat = 0, cart = {};
     const f = n => Number(n || 0).toLocaleString('uz-UZ') + " so'm";
 
+    async function fetchMenuData() {
+      const res = await fetch('/api/menu', { cache: 'no-store' });
+      if (!res.ok) throw new Error('Menyu ma’lumotlari olinmadi');
+      return res.json();
+    }
+
     async function init() {
       try {
-        const res = await fetch('/api/menu');
-        const data = await res.json();
+        if (QR) {
+          const verify = await fetch('/api/qr/verify?table=' + encodeURIComponent(T) + '&qr=' + encodeURIComponent(QR));
+          const verified = await verify.json();
+          if (!verify.ok || !verified.valid) throw new Error('QR kod noto‘g‘ri. Restoran xodimidan yangi QR kodni so‘rang.');
+          QR_LOCKED = true;
+        }
+        const data = await fetchMenuData();
         C = data.cats || [];
         M = data.menu || [];
         tabs();
         show();
       } catch (e) {
         console.error('Menu load error:', e);
+        g.innerHTML = '<p style="text-align:center;color:#ffb4a8;padding:30px">' + String(e.message || 'Menyu yuklanmadi') + '</p>';
+      }
+    }
+
+    // Keep already-open customer menus in sync with Admin category/menu changes.
+    async function refreshMenu() {
+      try {
+        const data = await fetchMenuData();
+        const nextCats = data.cats || [];
+        const nextMenu = data.menu || [];
+        if (JSON.stringify(C) === JSON.stringify(nextCats) && JSON.stringify(M) === JSON.stringify(nextMenu)) return;
+        const selectedName = C[cat];
+        C = nextCats;
+        M = nextMenu;
+        const nextIndex = C.indexOf(selectedName);
+        cat = nextIndex >= 0 ? nextIndex : Math.min(cat, Math.max(0, C.length - 1));
+        tabs();
+        show();
+        const total = sum();
+        tot.textContent = f(total);
+        bar.classList.toggle('on', total > 0);
+      } catch (error) {
+        console.warn('Menu refresh failed:', error);
       }
     }
 
@@ -294,7 +331,7 @@
     function op() {
       const L = M.filter(m => cart[m.id]);
       if (!L.length) return;
-      const pills = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(n => 
+      const pills = QR_LOCKED ? '' : [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(n =>
         `<button type="button" class="table-pill ${String(n) === String(T) ? 'active' : ''}" data-t="${n}" onclick="pickTable(${n})">Stol ${n}</button>`
       ).join('');
 
@@ -315,9 +352,9 @@
           <b>Jami summa:</b>
           <b class="gold" style="font-size:19px">${f(sum())}</b>
         </div>
-        <label style="display:block;margin-top:14px;color:#e9d5a7;font-size:13px">Stol raqamini tanlang yoki kiriting:</label>
+        <label style="display:block;margin-top:14px;color:#e9d5a7;font-size:13px">${QR_LOCKED ? 'Sizning stolingiz:' : 'Stol raqamini tanlang yoki kiriting:'}</label>
         <div class="table-pills">${pills}</div>
-        <input id="tn" type="text" placeholder="Stol raqami (masalan: 1, 5, VIP-2)" value="${T}" onchange="T=this.value.trim()">
+        <input id="tn" type="text" placeholder="Stol raqami (masalan: 1, 5, VIP-2)" value="${T}" ${QR_LOCKED ? 'readonly' : 'onchange="T=this.value.trim()"'}>
         <button class="btn" style="width:100%;margin-top:10px" onclick="send()">Ofitsiantga yuborish</button>
       `;
       md.classList.add('on');
@@ -336,7 +373,7 @@
         const res = await fetch('/api/order', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ table: t, items })
+          body: JSON.stringify({ table: t, items, qr: QR })
         });
         const r = await res.json();
         if (r.error) return alert(r.error);
@@ -358,6 +395,7 @@
     }
 
     init();
+    setInterval(refreshMenu, 15000);
   </script>
 </body>
 </html>

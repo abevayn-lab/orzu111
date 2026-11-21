@@ -99,6 +99,8 @@
       margin: 10px 0 14px;
     }
     .order { padding: 14px; border-radius: 18px; }
+    .order.is-new { border: 2px solid #f4c65e; box-shadow: 0 0 18px rgba(244,198,94,.22); }
+    .new-ribbon { color:#17100b; background:#f4c65e; padding:4px 9px; border-radius:20px; font-size:10px; font-weight:900; margin-left:8px; }
     .top, .bottom { display: flex; justify-content: space-between; align-items: center; }
     .oid { font-weight: 800; color: var(--g2); font-size: 16px; }
     .waiter { color: var(--g); font-size: 13px; font-weight: 700; margin: 8px 0; }
@@ -191,12 +193,8 @@
       </div>
 
       <section class="section">
-        <h3 style="color:var(--g2);margin:0 0 12px">🔔 Yangi kelgan buyurtmalar</h3>
-        <div id="newOrders"></div>
-      </section>
-
-      <section class="section">
-        <h3 style="color:var(--g2);margin:0 0 12px">📋 Barcha buyurtmalar ro‘yxati</h3>
+        <h3 style="color:var(--g2);margin:0 0 6px">📋 Barcha buyurtmalar</h3>
+        <p style="color:#d8c29d;font-size:12px;margin:0 0 12px">Yangi zakazlar avtomatik ravishda ro‘yxatning eng tepasida chiqadi.</p>
         <div id="orders"></div>
       </section>
 
@@ -305,9 +303,9 @@
 
     function card(o) {
       return `
-        <article class="order">
+        <article class="order ${o.status === 'new' ? 'is-new' : ''}">
           <div class="top">
-            <span class="oid">#${esc(o.id)} · Stol ${esc(o.table)}</span>
+            <span class="oid">#${esc(o.id)} · Stol ${esc(o.table)} ${o.status === 'new' ? '<span class="new-ribbon">YANGI</span>' : ''}</span>
             <span class="time">${o.time ? new Date(o.time).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' }) : ''}</span>
           </div>
           <div class="waiter">👤 MAS’UL OFITSIANT: ${esc(o.waiterName || 'Noma’lum')}</div>
@@ -331,14 +329,16 @@
     function render(d) {
       $('login').style.display = 'none';
       $('dashboard').style.display = 'block';
-      const all = (d.orders || []).slice().sort((a, b) => b.time - a.time);
+      // One shared live list for every waiter: newest orders always stay at the top.
+      const all = (d.orders || []).slice().sort((a, b) =>
+        Number(b.time || 0) - Number(a.time || 0) || Number(b.id || 0) - Number(a.id || 0)
+      );
       const newIds = new Set(all.filter(o => o.status === 'new').map(o => String(o.id)));
       if (known !== null && [...newIds].some(id => !known.has(id))) beepNewOrder();
       known = newIds;
       const fresh = all.filter(o => o.status === 'new');
       $('newCount').textContent = fresh.length + ' ta';
       $('allCount').textContent = all.length + ' ta';
-      $('newOrders').innerHTML = fresh.length ? fresh.map(card).join('') : '<div class="empty">Yangi buyurtmalar yo‘q</div>';
       $('orders').innerHTML = all.length ? all.map(card).join('') : '<div class="empty">Hozircha buyurtmalar yo‘q</div>';
     }
 
@@ -363,7 +363,7 @@
       $('dashboard').style.display = 'none';
     }
 
-    setInterval(refresh, 3500);
+    setInterval(refresh, 2000);
   </script>
 </body>
 </html>
