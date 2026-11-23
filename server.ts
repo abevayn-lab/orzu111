@@ -240,8 +240,9 @@ async function load() {
     }
   }
   // Rehydrate compacted order photos from menu config; base64 images are stored only once.
-  const menuByName = new Map((CFG.menu || []).map(item => [String(item.name).trim().toLowerCase(), item]));
-  for (const order of O.list || []) {
+  const menuItems = Array.isArray(CFG?.menu) ? CFG.menu : [];
+  const menuByName = new Map(menuItems.map(item => [String(item.name).trim().toLowerCase(), item]));
+  for (const order of (Array.isArray(O?.list) ? O.list : [])) {
     for (const item of order.items || []) {
       if (!item.img) {
         const menuItem = menuByName.get(String(item.name || '').trim().toLowerCase());
