@@ -517,8 +517,13 @@ app.post('/api/station/item-status', stationAuth, async (q, s) => {
   const next = String(q.body.status || '');
   if (!order || order.status === 'paid' || !item || assigned !== station) return s.status(404).json({ error: 'Buyurtma yoki mahsulot topilmadi' });
   if (!['new', 'preparing', 'ready', 'served'].includes(next)) return s.status(400).json({ error: 'Holat noto‘g‘ri' });
+  const previousStatus = item.kitchenStatus;
   item.kitchenStatus = next as OrderItem['kitchenStatus'];
-  if (!await save('orders')) return s.status(500).json({ error: 'Holat saqlanmadi' });
+  if (!await save('orders')) {
+    if (previousStatus === undefined) delete item.kitchenStatus;
+    else item.kitchenStatus = previousStatus;
+    return s.status(500).json({ error: 'Holat saqlanmadi' });
+  }
   s.json({ ok: true, orderId: order.id, itemIndex: index, status: next });
 });
 
@@ -549,9 +554,14 @@ app.post('/api/kitchen/item-status', kitchen, async (q, s) => {
   if (!['new', 'preparing', 'ready', 'served'].includes(next)) {
     return s.status(400).json({ error: 'Taom holati noto‘g‘ri' });
   }
+  const previousStatus = order.items[index].kitchenStatus;
   order.items[index].kitchenStatus = next as OrderItem['kitchenStatus'];
   const saved = await save('orders');
-  if (!saved) return s.status(500).json({ error: 'Holat saqlanmadi. Qayta urinib ko‘ring.' });
+  if (!saved) {
+    if (previousStatus === undefined) delete order.items[index].kitchenStatus;
+    else order.items[index].kitchenStatus = previousStatus;
+    return s.status(500).json({ error: 'Holat saqlanmadi. Qayta urinib ko‘ring.' });
+  }
   s.json({ ok: true, orderId: order.id, itemIndex: index, status: next });
 });
 
@@ -658,10 +668,12 @@ app.post('/api/waiter/add', wt, async (q: WaiterRequest, s: Response) => {
   if (!items.length) return s.status(400).json({ error: 'Taom tanlanmagan' });
 
   let o: Order | undefined;
+  let previousOrder: Order | undefined;
   const isNewOrder = !q.body.orderId;
   if (!isNewOrder) {
     o = O.list.find(o => o.id == q.body.orderId && o.waiter === wid);
     if (!o || o.status === 'paid') return s.status(400).json({ error: 'Buyurtma topilmadi' });
+    previousOrder = JSON.parse(JSON.stringify(o)) as Order;
     for (const it of items) {
       const ex = o.items.find(x => x.name === it.name && x.price === it.price);
       if (ex) {
@@ -689,6 +701,9 @@ app.post('/api/waiter/add', wt, async (q: WaiterRequest, s: Response) => {
     if (isNewOrder) {
       O.list = O.list.filter(existing => existing.id !== o!.id);
       O.seq = Math.max(0, O.seq - 1);
+    } else if (previousOrder) {
+      const index = O.list.findIndex(existing => existing.id === previousOrder!.id);
+      if (index >= 0) O.list[index] = previousOrder;
     }
     saveLocally();
     return s.status(500).json({ error: 'Buyurtma bazaga saqlanmadi. Qayta urinib ko‘ring.' });
@@ -707,7 +722,7 @@ app.post('/api/waiter/print', wt, async (q: WaiterRequest, s: Response) => {
   const job: PrintJob = {
     id: String(Date.now()) + '-' + Math.random().toString(36).slice(2, 8),
     printerIp: O.cashierSettings?.printerIp || '192.168.1.51',
-    order: { ...o, waiterName: o.waiterName || q.w!.name }
+    order: JSON.parse(JSON.stringify({ ...o, waiterName: o.waiterName || q.w!.name }))
   };
   O.printJobs.push(job);
   if (!await save('orders')) {
@@ -726,7 +741,7 @@ app.post('/api/cashier/print', cashier, async (q: Request, s: Response) => {
   const job: PrintJob = {
     id: String(Date.now()) + '-' + Math.random().toString(36).slice(2, 8),
     printerIp: String(q.body.printerIp || O.cashierSettings?.printerIp || '192.168.1.51'),
-    order: { ...o }
+    order: JSON.parse(JSON.stringify(o))
   };
   O.printJobs.push(job);
   const persisted = await save('orders');
