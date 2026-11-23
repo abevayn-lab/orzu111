@@ -449,7 +449,8 @@ app.post('/api/order', async (q, s) => {
   const table = String(q.body.table || '').trim();
   const qrToken = String(q.body.qr || '');
   const items: OrderItem[] = [];
-  if (!table || table.length > 20) return s.status(400).json({ error: 'Stol raqami noto‘g‘ri' });
+  if (!/^[A-Za-z0-9_-]{1,20}$/.test(table)) return s.status(400).json({ error: 'Stol raqami noto‘g‘ri' });
+  if (!Array.isArray(q.body.items)) return s.status(400).json({ error: 'Buyurtma mahsulotlari noto‘g‘ri yuborildi' });
   // Backward compatibility: previously printed table QR codes contain ?table=<number>
   // but no signed token. Keep those public table links working while validating all new signed QR codes.
   // Older printed table QR codes have no signed token. They can only identify
@@ -459,15 +460,23 @@ app.post('/api/order', async (q, s) => {
   if (!validTableQrToken(table, qrToken) && !legacyTableQr) {
     return s.status(403).json({ error: 'Buyurtma faqat stol QR kodi orqali beriladi. Stol ustidagi QR kodni skanerlang.' });
   }
-  for (const i of q.body.items || []) {
-    const m = CFG.menu.find(m => m.id == i.id);
-    if (m && Number(i.qty) > 0) {
+  for (const i of q.body.items) {
+    const m = CFG.menu.find(m => Number(m.id) === Number(i?.id) && !m.hidden);
+    const qty = Number(i?.qty);
+    if (!m || !Number.isInteger(qty) || qty < 1 || qty > 99) {
+      return s.status(400).json({ error: 'Menyu mahsuloti yoki miqdori noto‘g‘ri' });
+    }
+    const existing = items.find(item => item.name === m.name && item.price === m.price);
+    if (existing) {
+      if (existing.qty + qty > 99) return s.status(400).json({ error: 'Bir mahsulot miqdori 99 tadan oshmasin' });
+      existing.qty += qty;
+    } else {
       items.push({
         name: m.name,
         price: m.price,
         img: m.img || '',
         station: stationForMenuItem(m),
-        qty: Math.min(99, Number(i.qty) | 0)
+        qty
       });
     }
   }
@@ -483,6 +492,7 @@ app.post('/api/order', async (q, s) => {
     w => w && w.id != null && String(w.name || '').trim() && O.waiterShifts?.[w.id]?.online === true
   );
   if (!pool.length) return s.status(409).json({ error: 'Hozircha ofitsiantlar onlayn emas. Iltimos, xodimga murojaat qiling.' });
+  const previousWaiterIndex = O.nextWaiterIndex;
   const waiterIndex = O.nextWaiterIndex % pool.length;
   const w = pool[waiterIndex];
   const wid = w.id;
@@ -502,7 +512,8 @@ app.post('/api/order', async (q, s) => {
   const persisted = await save('orders');
   if (!persisted) {
     O.list = O.list.filter(existing => existing.id !== o.id);
-    O.seq = Math.max(0, O.seq - 1);
+    if (O.seq === o.id) O.seq = o.id - 1;
+    O.nextWaiterIndex = previousWaiterIndex;
     saveLocally();
     return s.status(500).json({ error: 'Buyurtma bazaga saqlanmadi. Qayta urinib ko‘ring.' });
   }
@@ -701,7 +712,7 @@ app.post('/api/waiter/add', wt, async (q: WaiterRequest, s: Response) => {
     if (o.status === 'served') o.status = 'accepted';
   } else {
     const table = String(q.body.table || '').trim();
-    if (!table) return s.status(400).json({ error: 'Stol raqami kerak' });
+    if (!/^[A-Za-z0-9_-]{1,20}$/.test(table)) return s.status(400).json({ error: 'Stol raqami noto‘g‘ri' });
     o = {
       id: ++O.seq, table, waiter: wid, waiterName: q.w!.name,
       items, total: 0, status: 'accepted', time: Date.now()
@@ -1123,15 +1134,23 @@ app.delete('/api/admin/category/:index', adm, async (q, s) => {
 // ADMIN MENU ADD / EDIT
 app.post('/api/admin/menu', adm, async (q, s) => {
   const previousMenu = CFG.menu.map(item => ({ ...item }));
-  const b = q.body;
+  const b = q.body || {};
+  const name = String(b.name || '').trim();
+  const price = Number(b.price);
+  const cat = Number(b.cat);
+  const img = typeof b.img === 'string' ? b.img.trim() : '';
+  if (!name || name.length > 80) return s.status(400).json({ error: 'Taom nomi 1–80 belgi bo‘lishi kerak' });
+  if (!Number.isSafeInteger(price) || price < 1) return s.status(400).json({ error: 'Taom narxi musbat butun son bo‘lishi kerak' });
+  if (!Number.isInteger(cat) || cat < 0 || cat >= CFG.cats.length) return s.status(400).json({ error: 'Menyu bo‘limi noto‘g‘ri' });
+  if (img.length > 10 * 1024 * 1024 || /^(javascript|vbscript|data:text)/i.test(img)) return s.status(400).json({ error: 'Taom rasmi manzili noto‘g‘ri yoki juda katta' });
   const m = CFG.menu.find(m => m.id == b.id);
   if (m) {
     Object.assign(
       m,
       {
-        name: b.name,
-        price: +b.price,
-        cat: +b.cat,
+        name,
+        price,
+        cat,
         hidden: !!b.hidden
       },
       b.img ? { img: b.img } : {}
@@ -1139,10 +1158,10 @@ app.post('/api/admin/menu', adm, async (q, s) => {
   } else {
     CFG.menu.push({
       id: Date.now(),
-      name: b.name,
-      price: +b.price,
-      cat: +b.cat,
-      img: b.img || '',
+      name,
+      price,
+      cat,
+      img,
       hidden: false
     });
   }
@@ -1214,10 +1233,14 @@ app.post('/api/admin/waiter-presence', adm, async (q, s) => {
 
 // ADMIN ADD WAITER
 app.post('/api/admin/waiter', adm, async (q, s) => {
-  const id = Date.now();
+  const name = String(q.body.name || '').trim();
+  const pin = String(q.body.pin || '').trim();
+  if (!name || name.length > 50) return s.status(400).json({ error: 'Ofitsiant ismi 1–50 belgi bo‘lishi kerak' });
+  if (pin.length < 4 || pin.length > 20 || /\s/.test(pin)) return s.status(400).json({ error: 'PIN 4–20 belgidan iborat bo‘lishi va bo‘sh joy saqlamasligi kerak' });
+  const id = Math.max(Date.now(), ...CFG.waiters.map(w => Number(w.id) + 1 || 0));
   const previousWaiters = CFG.waiters.slice();
   const previousShift = O.waiterShifts[id];
-  CFG.waiters.push({ id, name: q.body.name, pin: String(q.body.pin) });
+  CFG.waiters.push({ id, name, pin });
   O.waiterShifts[id] = { online: true, onlineAt: Date.now(), offlineAt: 0, sessions: [{ start: Date.now(), end: 0 }] };
   const cfgSaved = await save('cfg');
   const ordersSaved = cfgSaved && await save('orders');
