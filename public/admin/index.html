@@ -216,7 +216,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script>
     let P = localStorage.getItem('ap') || '';
-    let D = { cats: [], menu: [], waiters: [], orders: [], history: [] };
+    let D = { cats: [], categoryStations: {}, menu: [], waiters: [], orders: [], history: [] };
     let tab = 0;
     let img = '';
     let edit = null;
@@ -572,6 +572,12 @@
               <div style="display:flex;align-items:center;gap:8px;padding:10px;border:1px solid #4a341b;border-radius:12px;background:#17100b">
                 <b style="min-width:24px;color:var(--g2)">${i + 1}.</b>
                 <span style="flex:1;font-weight:700">${x}</span>
+                <select aria-label="${x} ish joyi" onchange="setCategoryStation(${i},this.value)" style="max-width:145px;padding:7px;background:#242424;color:#fff;border:1px solid #806b48;border-radius:8px">
+                  <option value="waiter" ${(D.categoryStations||{})[x]==='waiter'?'selected':''}>Ofitsiant</option>
+                  <option value="oshpaz" ${(D.categoryStations||{})[x]==='oshpaz'?'selected':''}>Oshpaz</option>
+                  <option value="salatchi" ${(D.categoryStations||{})[x]==='salatchi'?'selected':''}>Salatchi</option>
+                  <option value="somsachi" ${(D.categoryStations||{})[x]==='somsachi'?'selected':''}>Somsachi</option>
+                </select>
                 <button class="btn sm" ${i === 0 ? 'disabled' : ''} onclick="moveCategory(${i},-1)" aria-label="Yuqoriga">↑</button>
                 <button class="btn sm" ${i === D.cats.length - 1 ? 'disabled' : ''} onclick="moveCategory(${i},1)" aria-label="Pastga">↓</button>
                 <button class="btn sm red" onclick="removeCategory(${i})">O‘chirish</button>
@@ -583,6 +589,13 @@
           <h3 class="gold" style="margin-top:0">Yangi menyu bo‘limi qo‘shish</h3>
           <p style="color:#d8c29d;font-size:13px">Masalan: 1-taom, 2-taom, Salatlar, Ichimliklar.</p>
           <input id="cn" maxlength="40" placeholder="Bo‘lim nomi">
+          <label style="display:block;margin:10px 0 6px;color:#d8c29d;font-size:13px">Qaysi ish joyiga yuborilsin?</label>
+          <select id="cstation">
+            <option value="waiter" selected>Ofitsiant (standart)</option>
+            <option value="oshpaz">Oshpaz</option>
+            <option value="salatchi">Salatchi</option>
+            <option value="somsachi">Somsachi</option>
+          </select>
           <button class="btn" onclick="addCategory()">+ Bo‘lim qo‘shish</button>
         </div>
       `;
@@ -605,10 +618,24 @@
       }
     }
 
+    async function setCategoryStation(index, station) {
+      try {
+        const r = await api('/api/admin/category/station', 'POST', { index, station });
+        if (r.error) throw new Error(r.error);
+        D.categoryStations = r.categoryStations || D.categoryStations;
+      } catch (error) {
+        alert('Ish joyi saqlanmadi: ' + error.message);
+        await load();
+        tab = 6;
+        render();
+      }
+    }
+
     async function addCategory() {
       const name = cn.value.trim();
+      const station = document.getElementById('cstation')?.value || 'waiter';
       if (!name) return alert('Bo‘lim nomini kiriting!');
-      const r = await api('/api/admin/category', 'POST', { name });
+      const r = await api('/api/admin/category', 'POST', { name, station });
       if (r.error) return alert(r.error);
       cn.value = '';
       await load();
