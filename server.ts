@@ -1031,6 +1031,7 @@ app.post('/api/cashier/update-order', cashier, async (q: Request, s: Response) =
     qtyByIndex.set(index, qty);
   }
 
+  const pushItems: OrderItem[] = [];
   let updatedItems: OrderItem[] = order.items.flatMap((item, index) => {
     const qty = qtyByIndex.has(index) ? qtyByIndex.get(index)! : Number(item.qty);
     return qty > 0 ? [{ ...item, qty }] : [];
@@ -1043,6 +1044,7 @@ app.post('/api/cashier/update-order', cashier, async (q: Request, s: Response) =
     if (!menuItem || !Number.isInteger(qty) || qty < 1 || qty > 99) {
       return s.status(400).json({ error: 'Qo‘shilayotgan mahsulot yoki miqdor noto‘g‘ri' });
     }
+    pushItems.push({ name: menuItem.name, price: Number(menuItem.price), img: menuItem.img || '', station: stationForMenuItem(menuItem), qty });
     const existing = updatedItems.find(item => item.name === menuItem.name && Number(item.price) === Number(menuItem.price));
     if (existing) {
       if (existing.qty + qty > 99) return s.status(400).json({ error: 'Bir mahsulot miqdori 99 tadan oshmasin' });
@@ -1064,6 +1066,7 @@ app.post('/api/cashier/update-order', cashier, async (q: Request, s: Response) =
     saveLocally();
     return s.status(500).json({ error: 'O‘zgarishlar bazaga saqlanmadi. Buyurtma avvalgi holatiga qaytarildi.' });
   }
+  if (pushItems.length) void notifyStationsForOrder(order, pushItems);
   s.json({ ok: true, order });
 });
 
