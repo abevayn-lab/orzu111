@@ -866,6 +866,21 @@ app.get('/api/cashier/data', cashier, (_q, s) => {
   });
 });
 
+// Lightweight cashier polling: do not resend large/base64 food photos every few seconds.
+app.get('/api/cashier/orders', cashier, (_q, s) => {
+  const closedAt = Number(O.dayClosures.cashier || 0);
+  const orders = O.list
+    .filter(o => Number(o.time || 0) >= closedAt)
+    .slice()
+    .sort((a, b) => Number(b.time || 0) - Number(a.time || 0))
+    .map(o => ({
+      ...o,
+      items: (o.items || []).map(({ img, ...item }) => item)
+    }));
+  s.set('Cache-Control', 'no-store');
+  s.json({ orders });
+});
+
 // CASHIER WAITER PRESENCE
 app.post('/api/cashier/waiter-presence', cashier, async (q, s) => {
   const waiter = CFG.waiters.find(w => String(w.id) === String(q.body.waiterId));
