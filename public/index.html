@@ -222,6 +222,7 @@
     const HAS_TABLE_PARAM = params.has('table');
     let QR_LOCKED = false;
     let M = [], C = [], cat = 0, cart = {};
+    let sendingOrder = false;
     const f = n => Number(n || 0).toLocaleString('uz-UZ') + " so'm";
 
     async function fetchMenuData() {
@@ -365,6 +366,7 @@
     }
 
     async function send() {
+      if (sendingOrder) return;
       const t = document.getElementById('tn').value.trim();
       if (!t) return alert('Iltimos, stol raqamini kiriting!');
       const items = Object.entries(cart)
@@ -373,6 +375,9 @@
 
       if (!items.length) return alert("Savat bo'sh");
 
+      sendingOrder = true;
+      const sendButton = sh.querySelector('button[onclick="send()"]');
+      if (sendButton) { sendButton.disabled = true; sendButton.textContent = 'Yuborilmoqda...'; }
       try {
         const res = await fetch('/api/order', {
           method: 'POST',
@@ -395,6 +400,10 @@
         bar.classList.remove('on');
       } catch (err) {
         alert('Buyurtma yuborishda xato: ' + err.message);
+      } finally {
+        sendingOrder = false;
+        const retryButton = sh.querySelector('button[onclick="send()"]');
+        if (retryButton) { retryButton.disabled = false; retryButton.textContent = 'Ofitsiantga yuborish'; }
       }
     }
 
