@@ -193,22 +193,20 @@ let O: AppOrders = {
 // DATABASE LOAD
 async function load() {
   if (SU && SK) {
-    try {
-      for (const k of ['cfg', 'orders']) {
-        const r = await fetch(
-          `${SU}/rest/v1/store?key=eq.${k}&select=data`,
-          { headers: HD }
-        );
-        if (r.ok) {
-          const j = await r.json();
-          if (j[0]) {
-            if (k === 'cfg') CFG = j[0].data;
-            else O = j[0].data;
-          }
-        }
+    // Never start with stale local defaults when Supabase is configured but unavailable.
+    // Doing so could accept orders against the wrong data and overwrite the live store.
+    for (const k of ['cfg', 'orders']) {
+      const r = await fetch(
+        `${SU}/rest/v1/store?key=eq.${k}&select=data`,
+        { headers: HD }
+      );
+      if (!r.ok) throw new Error(`Supabase ${k} load failed (HTTP ${r.status})`);
+      const j = await r.json();
+      if (!Array.isArray(j)) throw new Error(`Supabase ${k} returned an invalid response`);
+      if (j[0]) {
+        if (k === 'cfg') CFG = j[0].data;
+        else O = j[0].data;
       }
-    } catch (e) {
-      console.warn('Supabase fetch failed, falling back to local file:', e);
     }
   } else if (fs.existsSync(LF)) {
     try {
@@ -219,8 +217,15 @@ async function load() {
       console.warn('Local data.json read error:', e);
     }
   }
-
-  // Sanitize configurations
+  // Sanitize configurations and recover safe defaults for malformed rows.
+  if (!CFG || typeof CFG !== 'object') CFG = { cats: [...DEFAULT_CATS], menu: [...SEED_MENU], waiters: [] };
+  if (!O || typeof O !== 'object') O = {
+    list: [], seq: 10, nextWaiterIndex: 0,
+    dayClosures: { waiters: {}, cashier: 0, administrator: 0, admin: 0 },
+    waiterShifts: {}, cashierSettings: { printerIp: '192.168.1.51' }, printJobs: []
+  };
+  if (!Array.isArray(O.list)) O.list = [];
+  if (!Number.isInteger(O.seq) || O.seq < 0) O.seq = Math.max(10, ...O.list.map(o => Number(o?.id) || 0));
   if (!Array.isArray(CFG.cats) || !CFG.cats.length) CFG.cats = [...DEFAULT_CATS];
   if (!Array.isArray(CFG.menu) || !CFG.menu.length) CFG.menu = [...SEED_MENU];
   if (!Array.isArray(CFG.waiters) || !CFG.waiters.length) {
