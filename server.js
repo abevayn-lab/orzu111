@@ -395,6 +395,50 @@ app.post('/api/printer/jobs/ack', (q, s) => {
   s.json({ ok: true });
 });
 
+// CASHIER: create a direct counter sale from selected menu products.
+app.post('/api/cashier/order', cashier, async (q, s) => {
+  const items = [];
+  for (const selected of q.body.items || []) {
+    const m = CFG.menu.find(x => String(x.id) === String(selected.id) && !x.hidden);
+    const qty = Math.min(99, Math.max(0, Number(selected.qty) | 0));
+    if (m && qty > 0) items.push({ name: m.name, price: Number(m.price || 0), img: m.img || '', qty });
+  }
+  if (!items.length) return s.status(400).json({ error: 'Mahsulot tanlanmagan' });
+  const now = Date.now();
+  const order = {
+    id: ++O.seq, table: 'KASSA', waiter: null, waiterName: 'Kassir',
+    items, total: items.reduce((sum, item) => sum + item.price * item.qty, 0),
+    status: 'paid', time: now, paidAt: now, paidBy: 'Kassir',
+    paymentMethod: String(q.body.paymentMethod || 'Naqd').slice(0, 30)
+  };
+  O.list.push(order);
+  try { await save('orders'); }
+  catch (e) {
+    O.list = O.list.filter(x => x.id !== order.id);
+    O.seq = Math.max(0, O.seq - 1);
+    return s.status(500).json({ error: 'Savdo bazaga saqlanmadi. Qayta urinib ko‘ring.' });
+  }
+  s.json({ ok: true, order });
+});
+
+// CASHIER: queue a receipt for the local printer bridge.
+app.post('/api/cashier/print', cashier, async (q, s) => {
+  const order = O.list.find(x => String(x.id) === String(q.body.orderId));
+  if (!order) return s.status(404).json({ error: 'Buyurtma topilmadi' });
+  const job = {
+    id: String(Date.now()) + '-' + Math.random().toString(36).slice(2, 8),
+    printerIp: String(q.body.printerIp || O.cashierSettings?.printerIp || '192.168.1.51'),
+    order: { ...order }
+  };
+  O.printJobs.push(job);
+  try { await save('orders'); }
+  catch (e) {
+    O.printJobs = O.printJobs.filter(x => x.id !== job.id);
+    return s.status(500).json({ error: 'Chek navbatga saqlanmadi: ' + e.message });
+  }
+  s.json({ ok: true, message: 'Chek printer navbatiga yuborildi' });
+});
+
 // CASHIER: all orders and printer settings
 app.get('/api/cashier/data', cashier, (q, s) => {
   const closedAt = Number(O.dayClosures.cashier || 0);
