@@ -394,11 +394,11 @@
         root.innerHTML = `
           <section class="login">
             <h2 style="color:#ffe39a;margin-top:0">Ofitsiant kirishi</h2>
-            <p class="muted">Ofitsiantni tanlang va PIN kodni kiriting (Standart PIN: 1111 yoki 2222):</p>
+            <p class="muted">Ofitsiantni tanlang va shaxsiy PIN kodni kiriting:</p>
             <select id="ws">
               ${waiters.map(w => `<option value="${esc(w.id)}">${esc(w.name)}</option>`).join('')}
             </select>
-            <input id="pin" type="password" placeholder="PIN kod (masalan: 1111)" autofocus>
+            <input id="pin" type="password" placeholder="Shaxsiy PIN kod" autofocus>
             <button class="newbtn" style="position:static;margin-top:10px" onclick="go()">Kirish</button>
           </section>
         `;
