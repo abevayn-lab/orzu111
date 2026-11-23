@@ -350,6 +350,37 @@
     #newOrderItems .sale-cart-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid #3a2b18}
     #newOrderItems .sale-qty button{width:36px;height:36px}
     @media(max-width:600px){.new-order-panel{width:100%;max-height:94vh;padding:16px 12px}.new-order-heading{top:-16px}#newOrderProducts{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+    /* Compact + Zakaz menu */
+    .new-order-panel{width:min(820px,94vw);max-height:86vh;padding:16px;overflow-y:auto}
+    .new-order-heading{margin-bottom:8px;padding:4px 0;top:-16px}
+    #newOrderCategories{display:flex;gap:7px;overflow-x:auto;padding:2px 0 8px;margin:6px 0 9px;scrollbar-width:thin}
+    #newOrderCategories .sale-cat{min-height:42px;min-width:max-content;padding:5px 9px;gap:6px;border-radius:10px;font-size:12px}
+    #newOrderCategories .sale-cat img{width:30px;height:30px;flex-basis:30px;border-radius:7px}
+    #newOrderProducts{grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:8px}
+    #newOrderProducts .sale-product{display:grid;grid-template-columns:66px minmax(0,1fr);min-height:76px;border-radius:11px}
+    #newOrderProducts .sale-product>img{width:66px;height:100%;min-height:76px;max-height:92px}
+    #newOrderProducts .sale-product-body{padding:7px;gap:5px;min-width:0}
+    #newOrderProducts .sale-product-name{font-size:12px;line-height:1.2;min-height:0}
+    #newOrderProducts .sale-product-bottom{gap:4px;flex-wrap:wrap}
+    #newOrderProducts .sale-product-bottom>b{font-size:11px}
+    #newOrderProducts .sale-qty{gap:5px}
+    #newOrderProducts .sale-qty button,#newOrderItems .sale-qty button{width:29px;height:29px;border-radius:8px;font-size:19px}
+    #newOrderProducts .sale-qty b,#newOrderItems .sale-qty b{font-size:13px;min-width:15px}
+    .new-order-panel .sale-cart{margin-top:9px;padding:10px;border-radius:11px}
+    #newOrderItems .sale-cart-row{padding:5px 0;font-size:12px}
+    .new-order-panel .sale-cart-total{margin:7px 0;font-size:16px}
+    .new-order-panel #newOrderItems{max-height:115px;overflow-y:auto}
+    @media(max-width:600px){
+      .new-order-panel{width:96vw;max-height:88vh;padding:11px 9px}
+      #newOrderProducts{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+      #newOrderProducts .sale-product{grid-template-columns:54px minmax(0,1fr);min-height:68px}
+      #newOrderProducts .sale-product>img{width:54px;min-height:68px}
+      #newOrderProducts .sale-product-body{padding:6px}
+      #newOrderProducts .sale-product-name{font-size:11px}
+      .new-order-heading h3{font-size:17px}
+    }
+
   </style>
 
   <meta name="apple-mobile-web-app-capable" content="yes">
