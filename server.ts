@@ -594,6 +594,39 @@ app.post('/api/order', async (q, s) => {
     return s.status(400).json({ error: "Ofitsiant yo'q" });
   }
 
+  // If this table already has an unpaid order, keep its original waiter.
+  // A second QR order is appended to that active table order instead of being
+  // round-robin assigned to a different waiter.
+  const activeTableOrder = O.list
+    .filter(existing => String(existing.table).trim().toLowerCase() === table.toLowerCase() && existing.status !== 'paid')
+    .sort((a, b) => orderTimeMs(b) - orderTimeMs(a))[0];
+
+  if (activeTableOrder) {
+    const previousOrder = JSON.parse(JSON.stringify(activeTableOrder)) as Order;
+    for (const incoming of items) {
+      const existingItem = activeTableOrder.items.find(item => item.name === incoming.name && item.price === incoming.price);
+      if (existingItem) {
+        if (existingItem.qty + incoming.qty > 99) {
+          return s.status(400).json({ error: 'Bir mahsulot miqdori 99 tadan oshmasin' });
+        }
+        existingItem.qty += incoming.qty;
+      } else {
+        activeTableOrder.items.push(incoming);
+      }
+    }
+    activeTableOrder.total = activeTableOrder.items.reduce((sum, item) => sum + item.price * item.qty, 0);
+    activeTableOrder.status = 'new';
+    activeTableOrder.time = Date.now();
+    if (!await save('orders')) {
+      const index = O.list.findIndex(existing => existing.id === previousOrder.id);
+      if (index >= 0) O.list[index] = previousOrder;
+      return s.status(500).json({ error: 'Buyurtma bazaga saqlanmadi. Qayta urinib ko‘ring.' });
+    }
+    void notifyStationsForOrder(activeTableOrder, items);
+    return s.json({ ok: true, id: activeTableOrder.id, waiterName: activeTableOrder.waiterName, continued: true });
+  }
+
+  // New table session: assign the first order to an available waiter.
   // Customer orders are accepted only while at least one waiter is on shift.
   const pool = CFG.waiters.filter(
     w => w && w.id != null && String(w.name || '').trim() && O.waiterShifts?.[w.id]?.online === true
