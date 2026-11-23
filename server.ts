@@ -557,6 +557,7 @@ app.post('/api/waiter/presence', wt, async (q: WaiterRequest, s: Response) => {
   const wid = q.w!.id;
   const waiter = q.w!;
   const currentShift = O.waiterShifts[wid] || (O.waiterShifts[wid] = { online: false, onlineAt: 0, offlineAt: 0, sessions: [] });
+  const previousShift = JSON.parse(JSON.stringify(currentShift));
   const online = typeof q.body.online === 'boolean' ? q.body.online : !currentShift.online;
   const now = Date.now();
 
@@ -575,8 +576,7 @@ app.post('/api/waiter/presence', wt, async (q: WaiterRequest, s: Response) => {
 
   const saved = await save('orders');
   if (!saved) {
-    currentShift.online = !online;
-    currentShift.sessions = (currentShift.sessions || []).filter(x => x.start !== now);
+    O.waiterShifts[wid] = previousShift;
     return s.status(500).json({ error: 'Smena holati bazaga saqlanmadi. Qayta urinib ko‘ring.' });
   }
   s.json({
@@ -738,9 +738,13 @@ app.get('/api/printer/jobs', (q, s) => {
 // LOCAL BRIDGE: ACK
 app.post('/api/printer/jobs/ack', async (q, s) => {
   if (q.headers['x-orzu-print-key'] !== PRINT_KEY) return s.status(401).json({ error: 'auth' });
-  const before = (O.printJobs || []).length;
-  O.printJobs = (O.printJobs || []).filter(j => String(j.id) !== String(q.body.id));
-  if (O.printJobs.length !== before) await save('orders');
+  const previousJobs = O.printJobs || [];
+  const before = previousJobs.length;
+  O.printJobs = previousJobs.filter(j => String(j.id) !== String(q.body.id));
+  if (O.printJobs.length !== before && !await save('orders')) {
+    O.printJobs = previousJobs;
+    return s.status(500).json({ error: 'Chek navbati yangilanmadi.' });
+  }
   s.json({ ok: true });
 });
 
@@ -770,6 +774,7 @@ app.post('/api/cashier/waiter-presence', cashier, async (q, s) => {
 
   const now = Date.now();
   const shift = O.waiterShifts[waiter.id] || (O.waiterShifts[waiter.id] = { online: false, onlineAt: 0, offlineAt: 0, sessions: [] });
+  const previousShift = JSON.parse(JSON.stringify(shift));
   if (q.body.online && !shift.online) {
     shift.online = true;
     shift.onlineAt = now;
@@ -783,7 +788,10 @@ app.post('/api/cashier/waiter-presence', cashier, async (q, s) => {
     if (openSession) openSession.end = now;
   }
   const saved = await save('orders');
-  if (!saved) return s.status(500).json({ error: 'Ofitsiant smenasi bazaga saqlanmadi.' });
+  if (!saved) {
+    O.waiterShifts[waiter.id] = previousShift;
+    return s.status(500).json({ error: 'Ofitsiant smenasi bazaga saqlanmadi.' });
+  }
   s.json({
     ok: true,
     waiterId: waiter.id,
@@ -1021,6 +1029,7 @@ app.post('/api/admin/categories/reorder', adm, async (q, s) => {
     return s.status(400).json({ error: 'Bo‘limlar tartibi noto‘g‘ri yuborildi' });
   }
   const previous = CFG.cats.slice();
+  const previousMenu = CFG.menu;
   const nextIndex = new Map(requested.map((name, index) => [name, index]));
   CFG.menu = CFG.menu.map(item => {
     const oldCategory = previous[Number(item.cat)];
@@ -1028,7 +1037,11 @@ app.post('/api/admin/categories/reorder', adm, async (q, s) => {
     return { ...item, cat: newCategory === undefined ? 0 : newCategory };
   });
   CFG.cats = requested.slice();
-  if (!await save('cfg')) return s.status(500).json({ error: 'Bo‘limlar tartibi bazaga saqlanmadi.' });
+  if (!await save('cfg')) {
+    CFG.cats = previous;
+    CFG.menu = previousMenu;
+    return s.status(500).json({ error: 'Bo‘limlar tartibi bazaga saqlanmadi.' });
+  }
   s.json({ ok: true, cats: CFG.cats });
 });
 
@@ -1124,6 +1137,7 @@ app.post('/api/admin/waiter-presence', adm, async (q, s) => {
 
   const now = Date.now();
   const shift = O.waiterShifts[waiter.id] || (O.waiterShifts[waiter.id] = { online: false, onlineAt: 0, offlineAt: 0, sessions: [] });
+  const previousShift = JSON.parse(JSON.stringify(shift));
   if (q.body.online && !shift.online) {
     shift.online = true;
     shift.onlineAt = now;
@@ -1136,7 +1150,10 @@ app.post('/api/admin/waiter-presence', adm, async (q, s) => {
     const openSession = [...(shift.sessions || [])].reverse().find(x => !x.end);
     if (openSession) openSession.end = now;
   }
-  await save('orders');
+  if (!await save('orders')) {
+    O.waiterShifts[waiter.id] = previousShift;
+    return s.status(500).json({ error: 'Ofitsiant smenasi bazaga saqlanmadi.' });
+  }
   s.json({
     ok: true,
     waiterId: waiter.id,
@@ -1154,9 +1171,12 @@ app.post('/api/admin/waiter', adm, async (q, s) => {
   const previousShift = O.waiterShifts[id];
   CFG.waiters.push({ id, name: q.body.name, pin: String(q.body.pin) });
   O.waiterShifts[id] = { online: true, onlineAt: Date.now(), offlineAt: 0, sessions: [{ start: Date.now(), end: 0 }] };
-  if (!await save('cfg') || !await save('orders')) {
+  const cfgSaved = await save('cfg');
+  const ordersSaved = cfgSaved && await save('orders');
+  if (!cfgSaved || !ordersSaved) {
     CFG.waiters = previousWaiters;
     if (previousShift) O.waiterShifts[id] = previousShift; else delete O.waiterShifts[id];
+    if (cfgSaved) await save('cfg');
     return s.status(500).json({ error: 'Ofitsiant ma’lumotlari to‘liq saqlanmadi.' });
   }
   s.json({ ok: 1, id });
