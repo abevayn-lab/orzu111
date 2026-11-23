@@ -493,6 +493,26 @@
       render();
     }
 
+    async function refreshOrders() {
+      if (!key) return;
+      if (!Array.isArray(DATA.menu) || !DATA.menu.length) return refresh();
+      const d = await api('/api/cashier/orders');
+      const cachedImages = new Map();
+      (DATA.orders || []).forEach(order => (order.items || []).forEach(item => {
+        if (item.img) cachedImages.set(String(order.id) + '|' + item.name, item.img);
+      }));
+      DATA.orders = (d.orders || []).map(order => ({
+        ...order,
+        items: (order.items || []).map(item => ({
+          ...item,
+          img: cachedImages.get(String(order.id) + '|' + item.name) ||
+            DATA.menu.find(menuItem => menuItem.name === item.name)?.img || ''
+        }))
+      }));
+      updateStats();
+      render();
+    }
+
     function updateStats() {
       const paid = DATA.orders.filter(o => o.status === 'paid');
       $('pendingCount').textContent = DATA.orders.filter(o => o.status !== 'paid').length + ' ta';
@@ -829,7 +849,7 @@
     }
 
     setInterval(() => {
-      if (key && !document.hidden) refresh().catch(() => {});
+      if (key && !document.hidden) refreshOrders().catch(() => {});
     }, 4500);
   </script>
 <script>
