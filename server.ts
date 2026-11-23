@@ -213,17 +213,21 @@ async function load() {
   if (SU && SK) {
     // Never start with stale local defaults when Supabase is configured but unavailable.
     // Doing so could accept orders against the wrong data and overwrite the live store.
-    for (const k of ['cfg', 'orders']) {
-      const r = await fetch(
-        `${SU}/rest/v1/store?key=eq.${k}&select=data`,
-        { headers: HD }
-      );
-      if (!r.ok) throw new Error(`Supabase ${k} load failed (HTTP ${r.status})`);
-      const j = await r.json();
-      if (!Array.isArray(j)) throw new Error(`Supabase ${k} returned an invalid response`);
-      if (j[0]) {
-        if (k === 'cfg') CFG = j[0].data;
-        else O = j[0].data;
+    const [cfgResponse, ordersResponse] = await Promise.all(
+      (['cfg', 'orders'] as const).map(k =>
+        fetch(`${SU}/rest/v1/store?key=eq.${k}&select=data`, {
+          headers: HD,
+          signal: AbortSignal.timeout(12000)
+        })
+      )
+    );
+    for (const [key, response] of [['cfg', cfgResponse], ['orders', ordersResponse]] as const) {
+      if (!response.ok) throw new Error(`Supabase ${key} load failed (HTTP ${response.status})`);
+      const rows = await response.json();
+      if (!Array.isArray(rows)) throw new Error(`Supabase ${key} returned an invalid response`);
+      if (rows[0]) {
+        if (key === 'cfg') CFG = rows[0].data;
+        else O = rows[0].data;
       }
     }
   } else if (fs.existsSync(LF)) {
@@ -235,6 +239,18 @@ async function load() {
       console.warn('Local data.json read error:', e);
     }
   }
+  // Rehydrate compacted order photos from menu config; base64 images are stored only once.
+  const menuItems = Array.isArray(CFG?.menu) ? CFG.menu : [];
+  const menuByName = new Map(menuItems.map(item => [String(item.name).trim().toLowerCase(), item]));
+  for (const order of (Array.isArray(O?.list) ? O.list : [])) {
+    for (const item of order.items || []) {
+      if (!item.img) {
+        const menuItem = menuByName.get(String(item.name || '').trim().toLowerCase());
+        if (menuItem && Number(menuItem.price) === Number(item.price)) item.img = menuItem.img || '';
+      }
+    }
+  }
+
   // Sanitize configurations and recover safe defaults for malformed rows.
   if (!CFG || typeof CFG !== 'object') CFG = { cats: [...DEFAULT_CATS], menu: [...SEED_MENU], waiters: [] };
   if (!O || typeof O !== 'object') O = {
@@ -291,9 +307,23 @@ async function load() {
   saveLocally();
 }
 
+function compactOrdersForStorage(): AppOrders {
+  return {
+    ...O,
+    list: O.list.map(order => ({
+      ...order,
+      items: (order.items || []).map(item => {
+        const { img, ...rest } = item;
+        // Menu config already stores these photos; avoid duplicating base64 data in every order.
+        return typeof img === 'string' && img.startsWith('data:') ? rest : item;
+      })
+    }))
+  };
+}
+
 function saveLocally(): boolean {
   try {
-    fs.writeFileSync(LF, JSON.stringify({ CFG, O }, null, 2));
+    fs.writeFileSync(LF, JSON.stringify({ CFG, O: compactOrdersForStorage() }));
     return true;
   } catch (e) {
     console.error('Error writing data.json:', e);
@@ -309,16 +339,17 @@ function save(k: 'cfg' | 'orders'): Promise<boolean> {
 
   const body = JSON.stringify({
     key: k,
-    data: k === 'cfg' ? CFG : O
+    data: k === 'cfg' ? CFG : compactOrdersForStorage()
   });
   const operation = q0.catch(() => false).then(async () => {
     const r = await fetch(`${SU}/rest/v1/store`, {
       method: 'POST',
       headers: {
         ...HD,
-        Prefer: 'resolution=merge-duplicates'
+        Prefer: 'resolution=merge-duplicates,return=minimal'
       },
-      body
+      body,
+      signal: AbortSignal.timeout(15000)
     });
     if (!r.ok) {
       console.error('Supabase save error:', await r.text());
