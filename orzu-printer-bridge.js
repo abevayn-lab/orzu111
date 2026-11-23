@@ -7,6 +7,10 @@ const net = require('net');
 const HOST = '127.0.0.1';
 const PORT = 17891;
 
+// 80 mm thermal paper: standard ESC/POS Font A is typically 48 columns.
+const RECEIPT_WIDTH = 48;
+const divider = (char = '-') => line(char.repeat(RECEIPT_WIDTH));
+
 const API_BASE = (
   process.env.APP_URL ||
   process.env.API_BASE ||
@@ -42,7 +46,7 @@ function makeReceipt(o) {
     Buffer.from([0x1d, 0x21, 0x00]),
     line('TASHRIFINGIZ UCHUN RAHMAT!'),
     Buffer.from([0x1b, 0x45, 0x00]),
-    line('================================================'),
+    divider('='),
     Buffer.from([0x1d, 0x21, 0x00]),
     line('ORZU'),
     Buffer.from([0x1d, 0x21, 0x00]),
@@ -59,7 +63,7 @@ function makeReceipt(o) {
     line('Stol: ' + (o.table ?? '-')),
     line('Ofitsiant: ' + (o.waiterName || '-')),
     line(new Date(o.paidAt || o.time || Date.now()).toLocaleString('uz-UZ')),
-    line('------------------------------------------------')
+    divider('-')
   );
 
   const items = Array.isArray(o.items) ? o.items : [];
@@ -84,12 +88,12 @@ function makeReceipt(o) {
   }
 
   out.push(
-    line('--------------------------------'),
+    divider('-'),
     Buffer.from([0x1b, 0x45, 0x01]),
     line('JAMI: ' + money(receiptTotal)),
     Buffer.from([0x1b, 0x45, 0x00]),
     line('Tolov: ' + esc(o.paymentMethod || 'Naqd')),
-    line('================================================'),
+    divider('='),
     Buffer.from([0x1b, 0x61, 0x01]),
     line(''),
     Buffer.from([0x1d, 0x56, 0x42, 0x00])
