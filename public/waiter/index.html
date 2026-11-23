@@ -335,6 +335,11 @@
     const f = n => Number(n || 0).toLocaleString('uz-UZ') + " so'm";
     const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
+    function waiterHeaders() {
+      const credentials = btoa(unescape(encodeURIComponent(JSON.stringify({ id: W.id, pin: W.pin }))));
+      return { 'Content-Type': 'application/json', 'x-waiter': credentials };
+    }
+
     const ST = {
       new: 'Yangi buyurtma',
       accepted: 'Qabul qilindi',
@@ -419,7 +424,7 @@
         name: ws.options[ws.selectedIndex]?.text || 'Ofitsiant'
       };
       try {
-        const r = await fetch('/api/waiter/orders?id=' + encodeURIComponent(W.id) + '&pin=' + encodeURIComponent(W.pin));
+        const r = await fetch('/api/waiter/orders', { headers: waiterHeaders(), cache: 'no-store' });
         if (!r.ok) {
           alert("PIN noto'g'ri kiritildi!");
           return;
@@ -436,15 +441,14 @@
     async function load() {
       if (!W) return login();
       try {
-        const url = '/api/waiter/orders?id=' + encodeURIComponent(W.id) + '&pin=' + encodeURIComponent(W.pin);
-        const r = await fetch(url, { cache: 'no-store' });
+        const r = await fetch('/api/waiter/orders', { headers: waiterHeaders(), cache: 'no-store' });
         if (!r.ok) {
           localStorage.removeItem('w');
           W = null;
           return login();
         }
         const nextO = await r.json();
-        const pr = await fetch('/api/waiter/presence?id=' + encodeURIComponent(W.id) + '&pin=' + encodeURIComponent(W.pin), { cache: 'no-store' });
+        const pr = await fetch('/api/waiter/presence', { headers: waiterHeaders(), cache: 'no-store' });
         const nextShift = pr.ok ? await pr.json() : { online: true, onlineAt: 0, offlineAt: 0 };
 
         O = nextO;
@@ -566,8 +570,8 @@
       try {
         const r = await fetch('/api/waiter/print', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...W, orderId })
+          headers: waiterHeaders(),
+          body: JSON.stringify({ orderId })
         });
         const data = await r.json().catch(() => ({}));
         if (!r.ok) throw new Error(data.error || 'Chek yuborilmadi');
@@ -583,8 +587,8 @@
       try {
         await fetch('/api/waiter/status', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...W, orderId, status })
+          headers: waiterHeaders(),
+          body: JSON.stringify({ orderId, status })
         });
         load();
       } catch (e) {
@@ -597,8 +601,8 @@
       try {
         const r = await fetch('/api/waiter/close-day', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(W)
+          headers: waiterHeaders(),
+          body: JSON.stringify({})
         });
         if (!r.ok) throw new Error('Kunlik ishni yopib bo‘lmadi');
         knownNewIds.clear();
@@ -708,9 +712,8 @@
       try {
         const res = await fetch('/api/waiter/add', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: waiterHeaders(),
           body: JSON.stringify({
-            ...W,
             orderId: TGT || undefined,
             table: table || undefined,
             items
