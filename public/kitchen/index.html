@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="uz">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1,user-scalable=no">
 <title>ORZU — Oshxona</title>
 <style>
 :root{color-scheme:dark;--bg:#101112;--panel:#1c1e20;--line:#393b3e;--gold:#e7c77d;--muted:#aaa}
@@ -21,7 +21,12 @@ input{width:100%;margin:12px 0}button{cursor:pointer;font-weight:700}button:disa
 .empty{text-align:center;padding:60px 15px;color:var(--muted);background:var(--panel);border-radius:12px}
 .stats{display:flex;gap:8px;flex-wrap:wrap}.pill{padding:7px 10px;border-radius:20px;background:#282a2c;color:#ddd;font-size:13px}
 @media(max-width:500px){main{padding:10px}.grid{grid-template-columns:1fr}header{padding:12px}h1{font-size:18px}}
-</style>
+
+    /* Native-app feel: prevent accidental double-tap/pinch zoom and rubber-band page drift. */
+    html { touch-action: pan-y manipulation; overscroll-behavior-y: none; -webkit-text-size-adjust: 100%; }
+    body { overscroll-behavior-y: none; }
+    button, a, input, select, textarea { touch-action: manipulation; }
+  </style>
 </head>
 <body>
 <header><div><h1>ORZU · OSHXONA</h1><small id="updated">Buyurtmalar yuklanmoqda…</small></div><button onclick="load()">↻ Yangilash</button></header>
@@ -50,5 +55,14 @@ async function setStatus(orderId,itemIndex,status){if(busy)return;busy=true;try{
 document.getElementById('pass').addEventListener('keydown',e=>{if(e.key==='Enter')login()});
 if(secret){document.getElementById('board').hidden=false;load()}else showLogin();
 setInterval(load,4000);
+</script>
+<script>
+(function(){
+  const stopZoom = e => { if (e.cancelable) e.preventDefault(); };
+  document.addEventListener('gesturestart', stopZoom, {passive:false});
+  document.addEventListener('gesturechange', stopZoom, {passive:false});
+  document.addEventListener('gestureend', stopZoom, {passive:false});
+  document.addEventListener('dblclick', stopZoom, {passive:false});
+})();
 </script>
 </body></html>

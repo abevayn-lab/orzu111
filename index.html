@@ -212,6 +212,11 @@
       color: #1a1005;
       border-color: #ffe18d;
     }
+  
+    /* Native-app feel: prevent accidental double-tap/pinch zoom and rubber-band page drift. */
+    html { touch-action: pan-y manipulation; overscroll-behavior-y: none; -webkit-text-size-adjust: 100%; }
+    body { overscroll-behavior-y: none; }
+    button, a, input, select, textarea { touch-action: manipulation; }
   </style>
 </head>
 <body class="customer-app">
@@ -387,5 +392,14 @@
 
     init();
   </script>
+<script>
+(function(){
+  const stopZoom = e => { if (e.cancelable) e.preventDefault(); };
+  document.addEventListener('gesturestart', stopZoom, {passive:false});
+  document.addEventListener('gesturechange', stopZoom, {passive:false});
+  document.addEventListener('gestureend', stopZoom, {passive:false});
+  document.addEventListener('dblclick', stopZoom, {passive:false});
+})();
+</script>
 </body>
 </html>
