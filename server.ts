@@ -20,6 +20,9 @@ const PASS = process.env.ADMIN_PASS || 'admin123';
 const ADMINISTRATOR_PASS = process.env.ADMINISTRATOR_PASS || PASS || 'admin123';
 const CASHIER_PASS = process.env.CASHIER_PASS || PASS || 'admin123';
 const KITCHEN_PASS = process.env.KITCHEN_PASS || PASS || 'admin123';
+const SOMSACHI_PASS = process.env.SOMSACHI_PASS || KITCHEN_PASS;
+const SALATCHI_PASS = process.env.SALATCHI_PASS || KITCHEN_PASS;
+const OSHPAZ_PASS = process.env.OSHPAZ_PASS || KITCHEN_PASS;
 const PRINT_KEY = process.env.ORZU_PRINT_KEY || 'ORZU-LOCAL-PRINT-KEY-9f42c7b1-2026-11';
 const QR_SECRET = process.env.ORZU_QR_SECRET || PASS;
 function makeTableQrToken(table: string) { return createHmac('sha256', QR_SECRET).update('orzu-table:' + table).digest('hex'); }
@@ -75,6 +78,7 @@ interface OrderItem {
   qty: number;
   img?: string;
   kitchenStatus?: 'new' | 'preparing' | 'ready' | 'served';
+  station?: 'somsachi' | 'salatchi' | 'oshpaz';
 }
 
 interface Order {
@@ -303,6 +307,27 @@ function secretHeaderMatches(q: Request, headerName: string, expected: string) {
   catch { return false; }
 }
 
+function stationForMenuItem(menu: MenuItem): 'somsachi' | 'salatchi' | 'oshpaz' {
+  const name = String(menu.name || '').toLowerCase();
+  const category = String(CFG.cats[Number(menu.cat)] || '').toLowerCase();
+  if (name.includes('somsa')) return 'somsachi';
+  const isDrink = /(choy|cola|coca|pepsi|fanta|sprite|suv|ayron|sharbat|sok|limonad)/i.test(name);
+  if (!isDrink && (name.includes('salat') || category.includes('salat'))) return 'salatchi';
+  return 'oshpaz';
+}
+function stationPass(station: string): string | null {
+  if (station === 'somsachi') return SOMSACHI_PASS;
+  if (station === 'salatchi') return SALATCHI_PASS;
+  if (station === 'oshpaz') return OSHPAZ_PASS;
+  return null;
+}
+function stationAuth(q: Request, s: Response, n: NextFunction) {
+  const station = String(q.params.station || q.query.station || '');
+  const pass = stationPass(station);
+  if (pass && secretHeaderMatches(q, 'x-station', pass)) return n();
+  return s.status(401).json({ error: 'Parol noto‘g‘ri yoki bo‘lim topilmadi' });
+}
+
 // ADMIN AUTH
 function adm(q: Request, s: Response, n: NextFunction) {
   if (secretHeaderMatches(q, 'x-admin', PASS)) return n();
@@ -400,6 +425,7 @@ app.post('/api/order', async (q, s) => {
         name: m.name,
         price: m.price,
         img: m.img || '',
+        station: stationForMenuItem(m),
         qty: Math.min(99, Number(i.qty) | 0)
       });
     }
@@ -584,7 +610,7 @@ app.post('/api/waiter/add', wt, (q: WaiterRequest, s: Response) => {
   for (const i of q.body.items || []) {
     const m = CFG.menu.find(m => m.id == i.id);
     const qty = Math.min(99, Number(i.qty) | 0);
-    if (m && qty > 0) items.push({ name: m.name, price: m.price, img: m.img || '', qty });
+    if (m && qty > 0) items.push({ name: m.name, price: m.price, img: m.img || '', station: stationForMenuItem(m), qty });
   }
   if (!items.length) {
     return s.status(400).json({ error: 'Taom tanlanmagan' });
@@ -755,7 +781,7 @@ app.post('/api/cashier/create-order', cashier, async (q: Request, s: Response) =
     if (!menu || !Number.isInteger(qty) || qty < 1 || qty > 99) return s.status(400).json({ error: 'Mahsulot yoki miqdor noto‘g‘ri' });
     const existing = items.find(i => i.name === menu.name && i.price === Number(menu.price));
     if (existing) existing.qty += qty;
-    else items.push({ name: menu.name, price: Number(menu.price), img: menu.img || '', qty });
+    else items.push({ name: menu.name, price: Number(menu.price), img: menu.img || '', station: stationForMenuItem(menu), qty });
   }
   const order: Order = {
     id: ++O.seq, table, waiter: 0, waiterName: 'Kassir', items,
@@ -810,7 +836,7 @@ app.post('/api/cashier/update-order', cashier, async (q: Request, s: Response) =
       if (existing.qty + qty > 99) return s.status(400).json({ error: 'Bir mahsulot miqdori 99 tadan oshmasin' });
       existing.qty += qty;
     } else {
-      updatedItems.push({ name: menuItem.name, price: Number(menuItem.price), img: menuItem.img || '', qty });
+      updatedItems.push({ name: menuItem.name, price: Number(menuItem.price), img: menuItem.img || '', station: stationForMenuItem(menuItem), qty });
     }
   }
 
