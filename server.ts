@@ -3,6 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { createHmac, timingSafeEqual } from 'crypto';
+import webpush from 'web-push';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -136,6 +137,10 @@ interface AppConfig {
   waiters: Waiter[];
 }
 
+interface PushSubscriptionRecord {
+  station: 'somsachi' | 'salatchi' | 'oshpaz';
+  subscription: { endpoint: string; keys: { p256dh: string; auth: string }; [key: string]: unknown };
+}
 interface AppOrders {
   list: Order[];
   seq: number;
@@ -154,6 +159,7 @@ interface AppOrders {
     printerIp: string;
   };
   printJobs?: PrintJob[];
+  pushSubscriptions?: PushSubscriptionRecord[];
 }
 
 // Initial Uzbek menu dishes for out-of-the-box readiness
@@ -198,7 +204,8 @@ let O: AppOrders = {
     2: { online: true, onlineAt: Date.now(), offlineAt: 0, sessions: [{ start: Date.now(), end: 0 }] }
   },
   cashierSettings: { printerIp: '192.168.1.51' },
-  printJobs: []
+  printJobs: [],
+  pushSubscriptions: []
 };
 
 // DATABASE LOAD
@@ -263,6 +270,7 @@ async function load() {
   if (!Number.isFinite(Number(O.statsResetAt))) O.statsResetAt = 0;
   if (!O.waiterShifts || typeof O.waiterShifts !== 'object') O.waiterShifts = {};
   if (!Array.isArray(O.printJobs)) O.printJobs = [];
+  if (!Array.isArray(O.pushSubscriptions)) O.pushSubscriptions = [];
   if (!O.cashierSettings || typeof O.cashierSettings !== 'object') {
     O.cashierSettings = { printerIp: '192.168.1.51' };
   }
@@ -368,6 +376,44 @@ function stationPass(station: string): string | null {
   if (station === 'oshpaz') return OSHPAZ_PASS;
   return null;
 }
+const VAPID_PUBLIC_KEY = String(process.env.VAPID_PUBLIC_KEY || '');
+const VAPID_PRIVATE_KEY = String(process.env.VAPID_PRIVATE_KEY || '');
+const VAPID_SUBJECT = String(process.env.VAPID_SUBJECT || 'mailto:admin@orzu.uz');
+const PUSH_ENABLED = Boolean(VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY);
+if (PUSH_ENABLED) webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
+
+async function notifyStationsForOrder(order: Order, addedItems: OrderItem[]) {
+  if (!PUSH_ENABLED || !Array.isArray(O.pushSubscriptions) || !addedItems.length) return;
+  const byStation = new Map<string, OrderItem[]>();
+  for (const item of addedItems) { const key = stationForOrderItem(item); const group = byStation.get(key) || []; group.push(item); byStation.set(key, group); }
+  const expired = new Set<string>();
+  for (const [station, items] of byStation) {
+    const body = JSON.stringify({ title: 'ORZU · ' + ({somsachi:'SOMSACHI',salatchi:'SALATCHI',oshpaz:'OSHXONA'} as Record<string,string>)[station], body: 'STOL ' + order.table + ' · ' + items.map(item => item.name + ' × ' + item.qty).join(', '), tag: 'orzu-' + station + '-' + order.id, url: '/' + station, orderId: order.id });
+    for (const target of O.pushSubscriptions.filter(record => record.station === station)) {
+      try { await webpush.sendNotification(target.subscription as any, body, { TTL: 3600, urgency: 'high' }); }
+      catch (error) { const status = Number((error as any)?.statusCode || 0); if (status === 404 || status === 410) expired.add(target.subscription.endpoint); else console.warn('ORZU push send failed:', status || 'unknown'); }
+    }
+  }
+  if (expired.size) { O.pushSubscriptions = O.pushSubscriptions.filter(record => !expired.has(record.subscription.endpoint)); await save('orders'); }
+}
+
+app.get('/api/push/public-key', (_q, s) => { s.set('Cache-Control', 'no-store'); s.json({ enabled: PUSH_ENABLED, publicKey: PUSH_ENABLED ? VAPID_PUBLIC_KEY : '' }); });
+app.post('/api/push/subscribe', stationAuth, async (q, s) => {
+  const station = String(q.body.station || ''); const sub = q.body.subscription;
+  if (!PUSH_ENABLED) return s.status(503).json({ error: 'Push bildirishnomalari serverda sozlanmagan' });
+  if (!['somsachi','salatchi','oshpaz'].includes(station) || !sub || typeof sub.endpoint !== 'string' || !sub.endpoint.startsWith('https://') || !sub.keys || typeof sub.keys.p256dh !== 'string' || typeof sub.keys.auth !== 'string') return s.status(400).json({ error: 'Push obunasi noto‘g‘ri' });
+  if (!Array.isArray(O.pushSubscriptions)) O.pushSubscriptions = [];
+  O.pushSubscriptions = O.pushSubscriptions.filter(record => record.subscription.endpoint !== sub.endpoint);
+  O.pushSubscriptions.push({ station: station as PushSubscriptionRecord['station'], subscription: sub });
+  if (!await save('orders')) { O.pushSubscriptions = O.pushSubscriptions.filter(record => record.subscription.endpoint !== sub.endpoint); return s.status(500).json({ error: 'Bildirishnoma sozlamasi saqlanmadi' }); }
+  s.json({ ok: true, station });
+});
+app.post('/api/push/unsubscribe', stationAuth, async (q, s) => {
+  const endpoint = String(q.body.endpoint || ''); const previous = O.pushSubscriptions || [];
+  O.pushSubscriptions = previous.filter(record => !(record.station === q.body.station && record.subscription.endpoint === endpoint));
+  if (!await save('orders')) { O.pushSubscriptions = previous; return s.status(500).json({ error: 'Push obunasi o‘chirilmadi' }); }
+  s.json({ ok: true });
+});
 function stationAuth(q: Request, s: Response, n: NextFunction) {
   const station = String(q.params.station || q.query.station || q.body.station || '');
   const pass = stationPass(station);
@@ -530,6 +576,7 @@ app.post('/api/order', async (q, s) => {
     saveLocally();
     return s.status(500).json({ error: 'Buyurtma bazaga saqlanmadi. Qayta urinib ko‘ring.' });
   }
+  void notifyStationsForOrder(o, items);
   s.json({ ok: true, id: o.id });
 });
 
@@ -774,6 +821,7 @@ app.post('/api/waiter/add', wt, async (q: WaiterRequest, s: Response) => {
     saveLocally();
     return s.status(500).json({ error: 'Buyurtma bazaga saqlanmadi. Qayta urinib ko‘ring.' });
   }
+  void notifyStationsForOrder(o, items);
   s.json({ ok: true, id: o.id });
 });
 
@@ -959,6 +1007,7 @@ app.post('/api/cashier/create-order', cashier, async (q: Request, s: Response) =
     saveLocally();
     return s.status(500).json({ error: 'Buyurtma bazaga saqlanmadi. Qayta urinib ko‘ring.' });
   }
+  void notifyStationsForOrder(order, items);
   s.json({ ok: true, order });
 });
 
@@ -982,6 +1031,7 @@ app.post('/api/cashier/update-order', cashier, async (q: Request, s: Response) =
     qtyByIndex.set(index, qty);
   }
 
+  const pushItems: OrderItem[] = [];
   let updatedItems: OrderItem[] = order.items.flatMap((item, index) => {
     const qty = qtyByIndex.has(index) ? qtyByIndex.get(index)! : Number(item.qty);
     return qty > 0 ? [{ ...item, qty }] : [];
@@ -994,6 +1044,7 @@ app.post('/api/cashier/update-order', cashier, async (q: Request, s: Response) =
     if (!menuItem || !Number.isInteger(qty) || qty < 1 || qty > 99) {
       return s.status(400).json({ error: 'Qo‘shilayotgan mahsulot yoki miqdor noto‘g‘ri' });
     }
+    pushItems.push({ name: menuItem.name, price: Number(menuItem.price), img: menuItem.img || '', station: stationForMenuItem(menuItem), qty });
     const existing = updatedItems.find(item => item.name === menuItem.name && Number(item.price) === Number(menuItem.price));
     if (existing) {
       if (existing.qty + qty > 99) return s.status(400).json({ error: 'Bir mahsulot miqdori 99 tadan oshmasin' });
@@ -1015,6 +1066,7 @@ app.post('/api/cashier/update-order', cashier, async (q: Request, s: Response) =
     saveLocally();
     return s.status(500).json({ error: 'O‘zgarishlar bazaga saqlanmadi. Buyurtma avvalgi holatiga qaytarildi.' });
   }
+  if (pushItems.length) void notifyStationsForOrder(order, pushItems);
   s.json({ ok: true, order });
 });
 
