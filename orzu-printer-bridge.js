@@ -37,64 +37,67 @@ function line(s = '') {
   return Buffer.from(esc(s) + '\n', 'ascii');
 }
 
-// YANGI IXCHAM ORZU CHEK DIZAYNI
+// ORZU 80 mm receipt: compact layout matching the reference receipt.
+const fit = (value, width) => {
+  const s = esc(value);
+  return s.length > width ? s.slice(0, width) : s.padEnd(width, ' ');
+};
+const amount = n => (Math.round((Number(n) || 0) * 100) / 100).toFixed(2);
+
 function makeReceipt(o) {
-  const out = [
-    Buffer.from([0x1b, 0x40]),
-    Buffer.from([0x1b, 0x61, 0x01]),
-    Buffer.from([0x1b, 0x45, 0x01]),
-    Buffer.from([0x1d, 0x21, 0x00]),
-    line('TASHRIFINGIZ UCHUN RAHMAT!'),
-    Buffer.from([0x1b, 0x45, 0x00]),
-    divider('='),
-    Buffer.from([0x1d, 0x21, 0x00]),
-    line('ORZU'),
-    Buffer.from([0x1d, 0x21, 0x00]),
-    line('RESTAURANT'),
-    line('ARNASOY'),
-    Buffer.from([0x1b, 0x45, 0x00])
-  ];
-
-  out.push(
-    Buffer.from([0x1b, 0x61, 0x00]),
-    Buffer.from([0x1b, 0x45, 0x01]),
-    line('BUYURTMA #' + (o.id ?? '-')),
-    Buffer.from([0x1b, 0x45, 0x00]),
-    line('Stol: ' + (o.table ?? '-')),
-    line('Ofitsiant: ' + (o.waiterName || '-')),
-    line(new Date(o.paidAt || o.time || Date.now()).toLocaleString('uz-UZ')),
-    divider('-')
-  );
-
   const items = Array.isArray(o.items) ? o.items : [];
-  // Chek jami faqat chekda chop etilayotgan mahsulot qatorlaridan hisoblanadi.
-  // Serverdagi eski/stale total yoki avvalgi 5% xizmat haqi qayta qo'shilmaydi.
   const receiptTotal = items.reduce((sum, it) => {
     const qty = Math.max(0, Number(it.qty) || 0);
     const price = Math.max(0, Number(it.price) || 0);
     return sum + price * qty;
   }, 0);
+  const serviceFee = Math.round(receiptTotal * 0.05 * 100) / 100;
+  const grandTotal = receiptTotal + serviceFee;
+
+  const out = [
+    Buffer.from([0x1b, 0x40]),
+    Buffer.from([0x1b, 0x61, 0x01]),
+    Buffer.from([0x1b, 0x45, 0x01]),
+    line('ORZU RESTAURANT'),
+    Buffer.from([0x1b, 0x45, 0x00]),
+    line(''),
+    Buffer.from([0x1b, 0x1d, 0x21, 0x00]),
+    line(''),
+    Buffer.from([0x1b, 0x61, 0x00]),
+    line('Chek #' + (o.id ?? '-')),
+    line('Stol: ' + (o.table ?? '-') + '    Gostey: ' + (o.guests ?? 0)),
+    line('Sana: ' + new Date(o.paidAt || o.time || Date.now()).toLocaleDateString('uz-UZ')),
+    line('Ochildi: ' + (o.openedAt || '-') + '   Pechat: ' + new Date().toLocaleTimeString('uz-UZ', {hour:'2-digit', minute:'2-digit'})),
+    line('Kassir: ' + (o.cashierName || o.cashier || 'Admin')),
+    line('Ofitsiant: ' + (o.waiterName || 'Admin')),
+    divider('-'),
+    line(fit('Блюдо', 25) + fit('Кол-во', 8) + fit('Сумма', 15)),
+    divider('-')
+  ];
 
   for (const it of items) {
-    const name = esc(it.name || 'Mahsulot').slice(0, 48);
+    const name = esc(it.name || 'Mahsulot');
     const qty = Math.max(0, Number(it.qty) || 0);
     const price = Math.max(0, Number(it.price) || 0);
-    const total = money(price * qty);
-
-    out.push(
-      line(name),
-      line(qty + ' x ' + money(price) + ' = ' + total)
-    );
+    const rowTotal = qty * price;
+    out.push(line(fit(name, 25) + fit(qty.toFixed(2), 8) + amount(rowTotal).padStart(15, ' ')));
   }
 
   out.push(
     divider('-'),
+    line(fit('Всего:', 33) + amount(receiptTotal).padStart(15, ' ')),
+    line(fit('Xizmat 5 %:', 33) + amount(serviceFee).padStart(15, ' ')),
+    divider('-'),
     Buffer.from([0x1b, 0x45, 0x01]),
-    line('JAMI: ' + money(receiptTotal)),
+    line(fit('Сум', 25) + amount(grandTotal).padStart(23, ' ')),
     Buffer.from([0x1b, 0x45, 0x00]),
-    line('Tolov: ' + esc(o.paymentMethod || 'Naqd')),
-    divider('='),
+    divider('-'),
     Buffer.from([0x1b, 0x61, 0x01]),
+    line(''),
+    line('TASHRIFINGIZ UCHUN RAHMAT!'),
+    line('INSTAGRAM sahifamizga obuna'),
+    line("bo'lgan bo'lsangiz xizmat haqqi"),
+    line("olinmaydi!!! @Orzu_Arnasoy"),
     line(''),
     Buffer.from([0x1d, 0x56, 0x42, 0x00])
   );
