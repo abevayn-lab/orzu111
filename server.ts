@@ -9,6 +9,14 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 app.use(express.json({ limit: '12mb', strict: false }));
+app.use((q: Request, s: Response, n: NextFunction) => {
+  if (q.path.startsWith('/api/')) {
+    s.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    s.set('Pragma', 'no-cache');
+    s.set('Expires', '0');
+  }
+  n();
+});
 app.use((q: Request, _s: Response, n: NextFunction) => {
   if (q.body === null) q.body = {};
   n();
@@ -724,13 +732,17 @@ app.post('/api/cashier/print', cashier, async (q: Request, s: Response) => {
 });
 
 // LOCAL BRIDGE: fetch queued print jobs
-app.get('/api/printer/jobs', (q, s) => {
+app.get('/api/printer/jobs', async (q, s) => {
   if (q.headers['x-orzu-print-key'] !== PRINT_KEY) return s.status(401).json({ error: 'auth' });
   const cutoff = Date.now() - 10 * 60 * 1000;
-  const fresh = (O.printJobs || []).filter(j => Number(String(j.id).split('-')[0]) >= cutoff);
-  if (fresh.length !== (O.printJobs || []).length) {
+  const previousJobs = O.printJobs || [];
+  const fresh = previousJobs.filter(j => Number(String(j.id).split('-')[0]) >= cutoff);
+  if (fresh.length !== previousJobs.length) {
     O.printJobs = fresh;
-    save('orders');
+    if (!await save('orders')) {
+      O.printJobs = previousJobs;
+      return s.status(500).json({ error: 'Printer navbati yangilanmadi.' });
+    }
   }
   s.json({ job: fresh[0] || null });
 });
