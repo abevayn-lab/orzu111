@@ -993,8 +993,39 @@ app.get('/api/cashier/data', cashier, (_q, s) => {
       shift: O.waiterShifts?.[id] || { online: false, onlineAt: 0, offlineAt: 0, sessions: [] }
     })),
     settings: O.cashierSettings || { printerIp: '192.168.1.51' },
+    cats: CFG.cats,
     menu: CFG.menu.filter(m => !m.hidden)
   });
+});
+
+// CASHIER DIRECT SALE: a paid counter sale from the cashier product picker.
+app.post('/api/cashier/direct-sale', cashier, async (q: Request, s: Response) => {
+  const items: OrderItem[] = [];
+  for (const row of q.body.items || []) {
+    const menu = CFG.menu.find(m => Number(m.id) === Number(row.menuId) && !m.hidden);
+    const qty = Number(row.qty);
+    if (!menu || !Number.isInteger(qty) || qty < 1 || qty > 99) {
+      return s.status(400).json({ error: 'Mahsulot yoki miqdor noto‘g‘ri' });
+    }
+    items.push({ name: menu.name, price: Number(menu.price), img: menu.img || '', station: stationForMenuItem(menu), qty });
+  }
+  if (!items.length) return s.status(400).json({ error: 'Mahsulot tanlanmagan' });
+  const now = Date.now();
+  const order: Order = {
+    id: ++O.seq, table: 'KASSA', waiter: 0, waiterName: 'Kassir', items,
+    total: Math.round(items.reduce((sum, item) => sum + item.price * item.qty, 0)),
+    status: 'paid', time: now, paidAt: now, paidBy: 'Kassir',
+    paymentMethod: String(q.body.paymentMethod || 'Naqd').slice(0, 30)
+  };
+  O.list.push(order);
+  const persisted = await save('orders');
+  if (!persisted) {
+    O.list = O.list.filter(x => x.id !== order.id);
+    O.seq = Math.max(0, O.seq - 1);
+    saveLocally();
+    return s.status(500).json({ error: 'Savdo bazaga saqlanmadi. Qayta urinib ko‘ring.' });
+  }
+  s.json({ ok: true, order });
 });
 
 // Lightweight cashier polling: do not resend large/base64 food photos every few seconds.
