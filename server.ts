@@ -232,7 +232,7 @@ async function load() {
   if (!CFG || typeof CFG !== 'object') CFG = { cats: [...DEFAULT_CATS], menu: [...SEED_MENU], waiters: [] };
   if (!O || typeof O !== 'object') O = {
     list: [], seq: 10, nextWaiterIndex: 0,
-    dayClosures: { waiters: {}, cashier: 0, administrator: 0, admin: 0 },
+    dayClosures: { waiters: {}, cashier: 0, administrator: 0, admin: 0, kitchen: 0, stations: {} },
     waiterShifts: {}, cashierSettings: { printerIp: '192.168.1.51' }, printJobs: []
   };
   if (!Array.isArray(O.list)) O.list = [];
