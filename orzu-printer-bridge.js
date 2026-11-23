@@ -61,7 +61,6 @@ function makeReceipt(o) {
     line('ORZU RESTAURANT'),
     Buffer.from([0x1b, 0x45, 0x00]),
     line(''),
-    Buffer.from([0x1b, 0x1d, 0x21, 0x00]),
     line(''),
     Buffer.from([0x1b, 0x61, 0x00]),
     line('Chek #' + (o.id ?? '-')),
