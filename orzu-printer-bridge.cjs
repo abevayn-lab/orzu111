@@ -42,7 +42,7 @@ function makeReceipt(o) {
   const subtotal = items.reduce((sum, it) => sum + qtyOf(it) * priceOf(it), 0);
   // 5% service charge, rounded to the nearest 1,000 so the printed
   // amounts match the supplied sample (43,000 -> 2,000).
-  const service = Math.round((subtotal * 0.05) / 1000) * 1000;
+  const service = Math.round(subtotal * 0.05);
   const grandTotal = subtotal + service;
 
   const pad = (s, n) => esc(s).slice(0, n).padEnd(n, ' ');
