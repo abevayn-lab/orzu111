@@ -322,7 +322,7 @@ function stationPass(station: string): string | null {
   return null;
 }
 function stationAuth(q: Request, s: Response, n: NextFunction) {
-  const station = String(q.params.station || q.query.station || '');
+  const station = String(q.params.station || q.query.station || q.body.station || '');
   const pass = stationPass(station);
   if (pass && secretHeaderMatches(q, 'x-station', pass)) return n();
   return s.status(401).json({ error: 'Parol noto‘g‘ri yoki bo‘lim topilmadi' });
@@ -1123,6 +1123,9 @@ app.get('/', (_q, s) => {
 app.get(['/cashier', '/cashier/'], (_q, s) => sendHtml(s, 'cashier'));
 app.get(['/waiter', '/waiter/'], (_q, s) => sendHtml(s, 'waiter'));
 app.get(['/kitchen', '/kitchen/'], (_q, s) => sendHtml(s, 'kitchen'));
+app.get(['/somsachi', '/somsachi/'], (_q, s) => sendHtml(s, 'station'));
+app.get(['/salatchi', '/salatchi/'], (_q, s) => sendHtml(s, 'station'));
+app.get(['/oshpaz', '/oshpaz/'], (_q, s) => sendHtml(s, 'station'));
 app.get(['/admin', '/admin/'], (_q, s) => sendHtml(s, 'admin'));
 app.get(['/administrator', '/administrator/'], (_q, s) => sendHtml(s, 'administrator'));
 
