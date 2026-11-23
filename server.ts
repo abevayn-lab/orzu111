@@ -1316,7 +1316,7 @@ function sendHtml(res: Response, subfolder: string, station?: 'somsachi' | 'sala
   for (const c of candidates) {
     if (fs.existsSync(c)) {
       if (station && subfolder === 'station') {
-        const html = fs.readFileSync(c, 'utf8').replace('<link rel="manifest" id="appManifest">', `<link rel="manifest" href="/station/manifest-${station}.webmanifest">`);
+        const html = fs.readFileSync(c, 'utf8').replace('<link rel="manifest" id="appManifest">', `<link rel="manifest" id="appManifest" href="/station/manifest-${station}.webmanifest">`);
         return res.type('html').send(html);
       }
       return res.sendFile(c);
