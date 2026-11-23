@@ -1113,7 +1113,7 @@ app.delete('/api/admin/waiter/:id', adm, (q, s) => {
 });
 
 // HELPER: Serve HTML with fallbacks
-function sendHtml(res: Response, subfolder: string) {
+function sendHtml(res: Response, subfolder: string, station?: 'somsachi' | 'salatchi' | 'oshpaz') {
   const candidates = [
     path.join(PUB, subfolder, 'index.html'),
     path.join(P, 'public', subfolder, 'index.html'),
@@ -1121,6 +1121,10 @@ function sendHtml(res: Response, subfolder: string) {
   ];
   for (const c of candidates) {
     if (fs.existsSync(c)) {
+      if (station && subfolder === 'station') {
+        const html = fs.readFileSync(c, 'utf8').replace('<link rel="manifest" id="appManifest">', `<link rel="manifest" href="/station/manifest-${station}.webmanifest">`);
+        return res.type('html').send(html);
+      }
       return res.sendFile(c);
     }
   }
@@ -1143,9 +1147,9 @@ app.get(['/menyu', '/menyu/'], (_q, s) => sendHtml(s, 'menu-view'));
 app.get(['/cashier', '/cashier/'], (_q, s) => sendHtml(s, 'cashier'));
 app.get(['/waiter', '/waiter/'], (_q, s) => sendHtml(s, 'waiter'));
 app.get(['/kitchen', '/kitchen/'], (_q, s) => sendHtml(s, 'kitchen'));
-app.get(['/somsachi', '/somsachi/'], (_q, s) => sendHtml(s, 'station'));
-app.get(['/salatchi', '/salatchi/'], (_q, s) => sendHtml(s, 'station'));
-app.get(['/oshpaz', '/oshpaz/'], (_q, s) => sendHtml(s, 'station'));
+app.get(['/somsachi', '/somsachi/'], (_q, s) => sendHtml(s, 'station', 'somsachi'));
+app.get(['/salatchi', '/salatchi/'], (_q, s) => sendHtml(s, 'station', 'salatchi'));
+app.get(['/oshpaz', '/oshpaz/'], (_q, s) => sendHtml(s, 'station', 'oshpaz'));
 app.get(['/admin', '/admin/'], (_q, s) => sendHtml(s, 'admin'));
 app.get(['/administrator', '/administrator/'], (_q, s) => sendHtml(s, 'administrator'));
 
