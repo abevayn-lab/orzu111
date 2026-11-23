@@ -529,7 +529,7 @@ app.get('/api/station/orders', stationAuth, (q, s) => {
   const station = String(q.query.station || '');
   const orders = O.list.filter(o => o.status !== 'paid').slice().sort((a,b) => a.time - b.time).map(o => ({
     id: o.id, table: o.table, waiterName: o.waiterName, time: o.time, status: o.status,
-    items: o.items.map((item, index) => ({ item, index })).filter(x => stationForOrderItem(x.item) === station).map(x => ({ index: x.index, name: x.item.name, qty: x.item.qty, kitchenStatus: x.item.kitchenStatus || 'new' }))
+    items: o.items.map((item, index) => ({ item, index })).filter(x => stationForOrderItem(x.item) === station).map(x => ({ index: x.index, name: x.item.name, img: x.item.img || '', qty: x.item.qty, kitchenStatus: x.item.kitchenStatus || 'new' }))
   })).filter(o => o.items.length);
   s.json({ station, orders });
 });
@@ -562,7 +562,7 @@ app.get('/api/kitchen/orders', kitchen, (_q, s) => {
       id: o.id, table: o.table, waiterName: o.waiterName, time: o.time,
       status: o.status,
       items: o.items.map((item, index) => ({
-        index, name: item.name, qty: item.qty,
+        index, name: item.name, img: item.img || '', qty: item.qty,
         kitchenStatus: item.kitchenStatus || 'new'
       }))
     }));
