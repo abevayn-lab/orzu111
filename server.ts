@@ -96,7 +96,7 @@ interface OrderItem {
   qty: number;
   img?: string;
   kitchenStatus?: 'new' | 'preparing' | 'ready' | 'served';
-  station?: 'somsachi' | 'salatchi' | 'oshpaz';
+  station?: 'somsachi' | 'salatchi' | 'oshpaz' | 'waiter';
 }
 
 interface Order {
@@ -131,10 +131,12 @@ interface PrintJob {
   order: Order;
 }
 
+type StationTarget = 'somsachi' | 'salatchi' | 'oshpaz' | 'waiter';
 interface AppConfig {
   cats: string[];
   menu: MenuItem[];
   waiters: Waiter[];
+  categoryStations?: Record<string, StationTarget>;
 }
 
 interface PushSubscriptionRecord {
@@ -261,6 +263,16 @@ async function load() {
   if (!Array.isArray(O.list)) O.list = [];
   if (!Number.isInteger(O.seq) || O.seq < 0) O.seq = Math.max(10, ...O.list.map(o => Number(o?.id) || 0));
   if (!Array.isArray(CFG.cats) || !CFG.cats.length) CFG.cats = [...DEFAULT_CATS];
+  if (!CFG.categoryStations || typeof CFG.categoryStations !== 'object') CFG.categoryStations = {};
+  for (const category of CFG.cats) {
+    if (!CFG.categoryStations[category]) {
+      const normalized = String(category || '').toLowerCase();
+      CFG.categoryStations[category] =
+        /(somsa|samsa)/i.test(normalized) ? 'somsachi' :
+        /salat/i.test(normalized) ? 'salatchi' :
+        /(1\s*-?\s*chi\s*taom|2\s*-?\s*chi\s*taom|shashlik|asarti|assorti)/i.test(normalized) ? 'oshpaz' : 'waiter';
+    }
+  }
   if (!Array.isArray(CFG.menu) || !CFG.menu.length) CFG.menu = [...SEED_MENU];
   if (!Array.isArray(CFG.waiters) || !CFG.waiters.length) {
     CFG.waiters = [
@@ -381,25 +393,23 @@ function orderTimeMs(order: { time?: unknown }): number {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-function stationForMenuItem(menu: MenuItem): 'somsachi' | 'salatchi' | 'oshpaz' {
+function stationForMenuItem(menu: MenuItem): StationTarget {
   const name = String(menu.name || '').trim().toLowerCase();
-  const category = String(CFG.cats[Number(menu.cat)] || '').trim().toLowerCase();
-  // Menu name/category is the source of truth, including common "samsa" spelling.
+  const category = String(CFG.cats[Number(menu.cat)] || '').trim();
+  const configured = CFG.categoryStations?.[category];
+  if (configured && ['somsachi', 'salatchi', 'oshpaz', 'waiter'].includes(configured)) return configured;
   if (/(somsa|samsa)/i.test(name) || /(somsa|samsa)/i.test(category)) return 'somsachi';
-  const isDrink = /(choy|cola|coca|pepsi|fanta|sprite|suv|ayron|sharbat|sok|limonad)/i.test(name);
-  if (!isDrink && (name.includes('salat') || category.includes('salat'))) return 'salatchi';
-  return 'oshpaz';
+  if (name.includes('salat') || category.toLowerCase().includes('salat')) return 'salatchi';
+  return 'waiter';
 }
-function stationForOrderItem(item: OrderItem): 'somsachi' | 'salatchi' | 'oshpaz' {
-  // Recalculate against the current menu first: old/stale station tags must not
-  // keep a somsa or salad trapped in the wrong production queue.
+function stationForOrderItem(item: OrderItem): StationTarget {
   const menu = CFG.menu.find(m => String(m.name || '').trim().toLowerCase() === String(item.name || '').trim().toLowerCase());
   if (menu) return stationForMenuItem(menu);
-  if (item.station === 'somsachi' || item.station === 'salatchi' || item.station === 'oshpaz') return item.station;
+  if (item.station && ['somsachi', 'salatchi', 'oshpaz', 'waiter'].includes(item.station)) return item.station;
   const name = String(item.name || '').toLowerCase();
   if (/(somsa|samsa)/i.test(name)) return 'somsachi';
   if (name.includes('salat')) return 'salatchi';
-  return 'oshpaz';
+  return 'waiter';
 }
 function stationPass(station: string): string | null {
   if (station === 'somsachi') return SOMSACHI_PASS;
@@ -416,7 +426,13 @@ if (PUSH_ENABLED) webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID
 async function notifyStationsForOrder(order: Order, addedItems: OrderItem[]) {
   if (!PUSH_ENABLED || !Array.isArray(O.pushSubscriptions) || !addedItems.length) return;
   const byStation = new Map<string, OrderItem[]>();
-  for (const item of addedItems) { const key = stationForOrderItem(item); const group = byStation.get(key) || []; group.push(item); byStation.set(key, group); }
+  for (const item of addedItems) {
+    const key = stationForOrderItem(item);
+    if (key === 'waiter') continue;
+    const group = byStation.get(key) || [];
+    group.push(item);
+    byStation.set(key, group);
+  }
   const expired = new Set<string>();
   for (const [station, items] of byStation) {
     const body = JSON.stringify({ title: 'ORZU · ' + ({somsachi:'SOMSACHI',salatchi:'SALATCHI',oshpaz:'OSHXONA'} as Record<string,string>)[station], body: 'STOL ' + order.table + ' · ' + items.map(item => item.name + ' × ' + item.qty).join(', '), tag: 'orzu-' + station + '-' + order.id, url: '/' + station, orderId: order.id });
@@ -1159,6 +1175,7 @@ app.get('/api/admin/data', adm, (_q, s) => {
   const closedAt = Number(O.dayClosures.admin || 0);
   s.json({
     cats: CFG.cats,
+    categoryStations: CFG.categoryStations || {},
     menu: CFG.menu,
     waiters: CFG.waiters.map(w => ({
       ...w,
@@ -1204,17 +1221,40 @@ app.post('/api/administrator/close-day', administrator, async (_q, s) => {
 // ADMIN CATEGORY ADD
 app.post('/api/admin/category', adm, async (q, s) => {
   const name = String(q.body.name || '').trim();
+  const station = String(q.body.station || 'waiter');
+  if (!['somsachi', 'salatchi', 'oshpaz', 'waiter'].includes(station)) return s.status(400).json({ error: 'Ish joyi noto‘g‘ri tanlandi' });
   if (!name) return s.status(400).json({ error: 'Bo‘lim nomini kiriting' });
   if (name.length > 40) return s.status(400).json({ error: 'Bo‘lim nomi 40 belgidan oshmasin' });
   if (CFG.cats.some(c => c.toLowerCase() === name.toLowerCase())) {
     return s.status(400).json({ error: 'Bu bo‘lim allaqachon bor' });
   }
   CFG.cats.push(name);
+  CFG.categoryStations = CFG.categoryStations || {};
+  CFG.categoryStations[name] = station as StationTarget;
   if (!await save('cfg')) {
     CFG.cats.pop();
+    delete CFG.categoryStations[name];
     return s.status(500).json({ error: 'Bo‘lim bazaga saqlanmadi.' });
   }
   s.json({ ok: 1, cats: CFG.cats });
+});
+
+// ADMIN CATEGORY STATION ASSIGNMENT
+app.post('/api/admin/category/station', adm, async (q, s) => {
+  const index = Number(q.body.index);
+  const station = String(q.body.station || 'waiter');
+  if (!Number.isInteger(index) || index < 0 || index >= CFG.cats.length) return s.status(400).json({ error: 'Bo‘lim topilmadi' });
+  if (!['somsachi', 'salatchi', 'oshpaz', 'waiter'].includes(station)) return s.status(400).json({ error: 'Ish joyi noto‘g‘ri tanlandi' });
+  const category = CFG.cats[index];
+  const previous = CFG.categoryStations?.[category];
+  CFG.categoryStations = CFG.categoryStations || {};
+  CFG.categoryStations[category] = station as StationTarget;
+  if (!await save('cfg')) {
+    if (previous) CFG.categoryStations[category] = previous;
+    else delete CFG.categoryStations[category];
+    return s.status(500).json({ error: 'Bo‘limning ish joyi saqlanmadi.' });
+  }
+  s.json({ ok: true, categoryStations: CFG.categoryStations });
 });
 
 // ADMIN CATEGORY REORDER — preserve each menu item's category while changing display order.
@@ -1261,8 +1301,12 @@ app.delete('/api/admin/category/:index', adm, async (q, s) => {
     else if (cat > index) cat -= 1;
     return { ...item, cat };
   });
+  const removedCategory = CFG.cats[index];
+  const previousStations = { ...(CFG.categoryStations || {}) };
   CFG.cats.splice(index, 1);
+  if (CFG.categoryStations) delete CFG.categoryStations[removedCategory];
   if (!await save('cfg')) {
+    CFG.categoryStations = previousStations;
     CFG.cats = previousCats;
     CFG.menu = previousMenu;
     return s.status(500).json({ error: 'Bo‘lim o‘chirish saqlanmadi.' });
