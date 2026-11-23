@@ -146,6 +146,8 @@ interface AppOrders {
     cashier: number;
     administrator: number;
     admin: number;
+    kitchen: number;
+    stations: Record<string, number>;
   };
   waiterShifts: Record<number, WaiterShift>;
   cashierSettings: {
@@ -190,7 +192,7 @@ let O: AppOrders = {
   list: [],
   seq: 10,
   nextWaiterIndex: 0,
-  dayClosures: { waiters: {}, cashier: 0, administrator: 0, admin: 0 },
+  dayClosures: { waiters: {}, cashier: 0, administrator: 0, admin: 0, kitchen: 0, stations: {} },
   waiterShifts: {
     1: { online: true, onlineAt: Date.now(), offlineAt: 0, sessions: [{ start: Date.now(), end: 0 }] },
     2: { online: true, onlineAt: Date.now(), offlineAt: 0, sessions: [{ start: Date.now(), end: 0 }] }
@@ -248,7 +250,7 @@ async function load() {
     O.nextWaiterIndex = 0;
   }
   if (!O.dayClosures || typeof O.dayClosures !== 'object') {
-    O.dayClosures = { waiters: {}, cashier: 0, administrator: 0, admin: 0 };
+    O.dayClosures = { waiters: {}, cashier: 0, administrator: 0, admin: 0, kitchen: 0, stations: {} };
   }
   if (!O.dayClosures.waiters || typeof O.dayClosures.waiters !== 'object') {
     O.dayClosures.waiters = {};
@@ -256,6 +258,8 @@ async function load() {
   if (!Number.isFinite(Number(O.dayClosures.admin))) O.dayClosures.admin = 0;
   if (!Number.isFinite(Number(O.dayClosures.cashier))) O.dayClosures.cashier = 0;
   if (!Number.isFinite(Number(O.dayClosures.administrator))) O.dayClosures.administrator = 0;
+  if (!Number.isFinite(Number(O.dayClosures.kitchen))) O.dayClosures.kitchen = 0;
+  if (!O.dayClosures.stations || typeof O.dayClosures.stations !== 'object') O.dayClosures.stations = {};
   if (!Number.isFinite(Number(O.statsResetAt))) O.statsResetAt = 0;
   if (!O.waiterShifts || typeof O.waiterShifts !== 'object') O.waiterShifts = {};
   if (!Array.isArray(O.printJobs)) O.printJobs = [];
@@ -527,11 +531,26 @@ app.get('/api/waiters', (_q, s) => {
 
 app.get('/api/station/orders', stationAuth, (q, s) => {
   const station = String(q.query.station || '');
-  const orders = O.list.filter(o => o.status !== 'paid').slice().sort((a,b) => a.time - b.time).map(o => ({
+  const closedAt = Number(O.dayClosures.stations[station] || 0);
+  const orders = O.list.filter(o => o.status !== 'paid' && Number(o.time || 0) >= closedAt).slice().sort((a,b) => a.time - b.time).map(o => ({
     id: o.id, table: o.table, waiterName: o.waiterName, time: o.time, status: o.status,
-    items: o.items.map((item, index) => ({ item, index })).filter(x => stationForOrderItem(x.item) === station).map(x => ({ index: x.index, name: x.item.name, qty: x.item.qty, kitchenStatus: x.item.kitchenStatus || 'new' }))
+    items: o.items.map((item, index) => ({ item, index })).filter(x => stationForOrderItem(x.item) === station).map(x => ({ index: x.index, name: x.item.name, img: x.item.img || '', qty: x.item.qty, kitchenStatus: x.item.kitchenStatus || 'new' }))
   })).filter(o => o.items.length);
   s.json({ station, orders });
+});
+app.post('/api/station/close-day', stationAuth, async (q, s) => {
+  const station = String(q.body.station || q.query.station || '');
+  if (!['somsachi', 'salatchi', 'oshpaz'].includes(station)) return s.status(400).json({ error: 'Ish joyi noto‘g‘ri' });
+  const previous = Number(O.dayClosures.stations[station] || 0);
+  const closedAt = Date.now();
+  const current = O.list.filter(o => Number(o.time || 0) >= previous && o.status !== 'paid')
+    .flatMap(o => o.items.filter(item => stationForOrderItem(item) === station));
+  O.dayClosures.stations[station] = closedAt;
+  if (!await save('orders')) {
+    O.dayClosures.stations[station] = previous;
+    return s.status(500).json({ error: 'Kunlik ish yopilmadi: ma’lumotlar bazaga saqlanmadi' });
+  }
+  s.json({ ok: true, closedAt, summary: { items: current.length, quantity: current.reduce((sum, item) => sum + Number(item.qty || 0), 0) } });
 });
 app.post('/api/station/item-status', stationAuth, async (q, s) => {
   const station = String(q.body.station || '');
@@ -554,19 +573,32 @@ app.post('/api/station/item-status', stationAuth, async (q, s) => {
 
 // KITCHEN DISPLAY: active orders and per-item preparation states
 app.get('/api/kitchen/orders', kitchen, (_q, s) => {
+  const closedAt = Number(O.dayClosures.kitchen || 0);
   const orders = O.list
-    .filter(o => o.status !== 'paid')
+    .filter(o => o.status !== 'paid' && Number(o.time || 0) >= closedAt)
     .slice()
     .sort((a, b) => a.time - b.time)
     .map(o => ({
       id: o.id, table: o.table, waiterName: o.waiterName, time: o.time,
       status: o.status,
       items: o.items.map((item, index) => ({
-        index, name: item.name, qty: item.qty,
+        index, name: item.name, img: item.img || '', qty: item.qty,
         kitchenStatus: item.kitchenStatus || 'new'
       }))
     }));
   s.json({ orders });
+});
+
+app.post('/api/kitchen/close-day', kitchen, async (_q, s) => {
+  const previous = Number(O.dayClosures.kitchen || 0);
+  const current = O.list.filter(o => o.status !== 'paid' && Number(o.time || 0) >= previous);
+  const summary = { orders: current.length, items: current.reduce((sum, o) => sum + o.items.length, 0), quantity: current.reduce((sum, o) => sum + o.items.reduce((n, item) => n + Number(item.qty || 0), 0), 0) };
+  O.dayClosures.kitchen = Date.now();
+  if (!await save('orders')) {
+    O.dayClosures.kitchen = previous;
+    return s.status(500).json({ error: 'Oshxona kuni yopilmadi: ma’lumotlar bazasi saqlamadi' });
+  }
+  s.json({ ok: true, closedAt: O.dayClosures.kitchen, summary, historyPreserved: true });
 });
 
 app.post('/api/kitchen/item-status', kitchen, async (q, s) => {
