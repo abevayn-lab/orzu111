@@ -610,6 +610,8 @@ app.post('/api/order', async (q, s) => {
           return s.status(400).json({ error: 'Bir mahsulot miqdori 99 tadan oshmasin' });
         }
         existingItem.qty += incoming.qty;
+        // A repeat QR order is new kitchen work, even when the same dish was already served.
+        existingItem.kitchenStatus = 'new';
       } else {
         activeTableOrder.items.push(incoming);
       }
