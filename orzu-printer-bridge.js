@@ -109,9 +109,8 @@ function makeReceipt(o) {
     Buffer.from([0x1b, 0x61, 0x01]),
     line(''),
     line('TASHRIFINGIZ UCHUN RAHMAT!'),
-    line('INSTAGRAM sahifamizga obuna'),
-    line("bo'lgan bo'lsangiz xizmat haqqi"),
-    line("olinmaydi!!! @Orzu_Arnasoy"),
+    line('Instagram: @orzu_arnasoy'),
+    line('Aksiyalardan bexabar qolmang!'),
     line(''),
     Buffer.from([0x1d, 0x56, 0x42, 0x00])
   );
