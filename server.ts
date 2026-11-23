@@ -333,6 +333,15 @@ function secretHeaderMatches(q: Request, headerName: string, expected: string) {
   catch { return false; }
 }
 
+function orderTimeMs(order: { time?: unknown }): number {
+  const raw = order?.time;
+  if (typeof raw === 'number' && Number.isFinite(raw)) return raw;
+  const numeric = Number(raw);
+  if (String(raw ?? '').trim() !== '' && Number.isFinite(numeric)) return numeric;
+  const parsed = Date.parse(String(raw ?? ''));
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
 function stationForMenuItem(menu: MenuItem): 'somsachi' | 'salatchi' | 'oshpaz' {
   const name = String(menu.name || '').trim().toLowerCase();
   const category = String(CFG.cats[Number(menu.cat)] || '').trim().toLowerCase();
@@ -532,7 +541,7 @@ app.get('/api/waiters', (_q, s) => {
 app.get('/api/station/orders', stationAuth, (q, s) => {
   const station = String(q.query.station || '');
   const closedAt = Number(O.dayClosures.stations[station] || 0);
-  const orders = O.list.filter(o => o.status !== 'paid' && Number(o.time || 0) >= closedAt).slice().sort((a,b) => a.time - b.time).map(o => ({
+  const orders = O.list.filter(o => orderTimeMs(o) >= closedAt).slice().sort((a,b) => orderTimeMs(a) - orderTimeMs(b)).map(o => ({
     id: o.id, table: o.table, waiterName: o.waiterName, time: o.time, status: o.status,
     items: o.items.map((item, index) => ({ item, index })).filter(x => stationForOrderItem(x.item) === station).map(x => ({ index: x.index, name: x.item.name, img: x.item.img || '', qty: x.item.qty, kitchenStatus: x.item.kitchenStatus || 'new' }))
   })).filter(o => o.items.length);
@@ -543,7 +552,7 @@ app.post('/api/station/close-day', stationAuth, async (q, s) => {
   if (!['somsachi', 'salatchi', 'oshpaz'].includes(station)) return s.status(400).json({ error: 'Ish joyi noto‘g‘ri' });
   const previous = Number(O.dayClosures.stations[station] || 0);
   const closedAt = Date.now();
-  const current = O.list.filter(o => Number(o.time || 0) >= previous && o.status !== 'paid')
+  const current = O.list.filter(o => orderTimeMs(o) >= previous)
     .flatMap(o => o.items.filter(item => stationForOrderItem(item) === station));
   O.dayClosures.stations[station] = closedAt;
   if (!await save('orders')) {
@@ -575,9 +584,9 @@ app.post('/api/station/item-status', stationAuth, async (q, s) => {
 app.get('/api/kitchen/orders', kitchen, (_q, s) => {
   const closedAt = Number(O.dayClosures.kitchen || 0);
   const orders = O.list
-    .filter(o => o.status !== 'paid' && Number(o.time || 0) >= closedAt)
+    .filter(o => orderTimeMs(o) >= closedAt)
     .slice()
-    .sort((a, b) => a.time - b.time)
+    .sort((a, b) => orderTimeMs(a) - orderTimeMs(b))
     .map(o => ({
       id: o.id, table: o.table, waiterName: o.waiterName, time: o.time,
       status: o.status,
@@ -591,7 +600,7 @@ app.get('/api/kitchen/orders', kitchen, (_q, s) => {
 
 app.post('/api/kitchen/close-day', kitchen, async (_q, s) => {
   const previous = Number(O.dayClosures.kitchen || 0);
-  const current = O.list.filter(o => o.status !== 'paid' && Number(o.time || 0) >= previous);
+  const current = O.list.filter(o => orderTimeMs(o) >= previous);
   const summary = { orders: current.length, items: current.reduce((sum, o) => sum + o.items.length, 0), quantity: current.reduce((sum, o) => sum + o.items.reduce((n, item) => n + Number(item.qty || 0), 0), 0) };
   O.dayClosures.kitchen = Date.now();
   if (!await save('orders')) {
