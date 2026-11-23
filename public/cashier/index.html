@@ -620,7 +620,7 @@
             <div class="items">
               ${(o.items || []).map(i => `
                 <div class="item">
-                  <span>${esc(i.name)} × ${Number(i.qty)}</span>
+                  <span style="display:flex;align-items:center;gap:9px;flex:1">${i.img ? `<img src="${esc(i.img)}" alt="" style="width:48px;height:48px;object-fit:cover;border-radius:8px" onerror="this.style.display='none'">` : ''}<span>${esc(i.name)} × ${Number(i.qty)}</span></span>
                   <b>${money(Number(i.price) * Number(i.qty))}</b>
                 </div>
               `).join('')}
