@@ -396,9 +396,10 @@ function orderTimeMs(order: { time?: unknown }): number {
 function stationForMenuItem(menu: MenuItem): StationTarget {
   const name = String(menu.name || '').trim().toLowerCase();
   const category = String(CFG.cats[Number(menu.cat)] || '').trim();
+  // Somsa products remain routed to the somsa station even in a legacy "Boshqa" category.
+  if (/(somsa|samsa)/i.test(name) || /(somsa|samsa)/i.test(category)) return 'somsachi';
   const configured = CFG.categoryStations?.[category];
   if (configured && ['somsachi', 'salatchi', 'oshpaz', 'waiter'].includes(configured)) return configured;
-  if (/(somsa|samsa)/i.test(name) || /(somsa|samsa)/i.test(category)) return 'somsachi';
   if (name.includes('salat') || category.toLowerCase().includes('salat')) return 'salatchi';
   return 'waiter';
 }
