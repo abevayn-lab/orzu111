@@ -613,48 +613,55 @@ app.post('/api/waiter/status', wt, (q: WaiterRequest, s: Response) => {
 });
 
 // WAITER ADD ITEMS
-app.post('/api/waiter/add', wt, (q: WaiterRequest, s: Response) => {
+app.post('/api/waiter/add', wt, async (q: WaiterRequest, s: Response) => {
   const wid = q.w!.id;
   const items: OrderItem[] = [];
   for (const i of q.body.items || []) {
     const m = CFG.menu.find(m => m.id == i.id);
     const qty = Math.min(99, Number(i.qty) | 0);
-    if (m && qty > 0) items.push({ name: m.name, price: m.price, img: m.img || '', station: stationForMenuItem(m), qty });
-  }
-  if (!items.length) {
-    return s.status(400).json({ error: 'Taom tanlanmagan' });
-  }
-  let o: Order | undefined;
-  if (q.body.orderId) {
-    o = O.list.find(o => o.id == q.body.orderId && o.waiter === wid);
-    if (!o || o.status === 'paid') {
-      return s.status(400).json({ error: 'Buyurtma topilmadi' });
+    if (m && qty > 0) {
+      // Every waiter-entered menu item is explicitly assigned to its production station.
+      items.push({ name: m.name, price: m.price, img: m.img || '', station: stationForMenuItem(m), qty });
     }
+  }
+  if (!items.length) return s.status(400).json({ error: 'Taom tanlanmagan' });
+
+  let o: Order | undefined;
+  const isNewOrder = !q.body.orderId;
+  if (!isNewOrder) {
+    o = O.list.find(o => o.id == q.body.orderId && o.waiter === wid);
+    if (!o || o.status === 'paid') return s.status(400).json({ error: 'Buyurtma topilmadi' });
     for (const it of items) {
       const ex = o.items.find(x => x.name === it.name && x.price === it.price);
-      if (ex) ex.qty = Math.min(99, ex.qty + it.qty);
-      else o.items.push(it);
+      if (ex) {
+        ex.qty = Math.min(99, ex.qty + it.qty);
+        // Repair older items that were saved before station routing was introduced.
+        ex.station = it.station;
+      } else {
+        o.items.push(it);
+      }
     }
     if (o.status === 'served') o.status = 'accepted';
   } else {
     const table = String(q.body.table || '').trim();
-    if (!table) {
-      return s.status(400).json({ error: 'Stol raqami kerak' });
-    }
+    if (!table) return s.status(400).json({ error: 'Stol raqami kerak' });
     o = {
-      id: ++O.seq,
-      table,
-      waiter: wid,
-      waiterName: q.w!.name,
-      items,
-      total: 0,
-      status: 'accepted',
-      time: Date.now()
+      id: ++O.seq, table, waiter: wid, waiterName: q.w!.name,
+      items, total: 0, status: 'accepted', time: Date.now()
     };
     O.list.push(o);
   }
+
   o.total = o.items.reduce((a, i) => a + i.price * i.qty, 0);
-  save('orders');
+  const persisted = await save('orders');
+  if (!persisted) {
+    if (isNewOrder) {
+      O.list = O.list.filter(existing => existing.id !== o!.id);
+      O.seq = Math.max(0, O.seq - 1);
+    }
+    saveLocally();
+    return s.status(500).json({ error: 'Buyurtma bazaga saqlanmadi. Qayta urinib ko‘ring.' });
+  }
   s.json({ ok: true, id: o.id });
 });
 
