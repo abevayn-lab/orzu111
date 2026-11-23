@@ -1,0 +1,18 @@
+{
+  "name": "ORZU — Oshpaz",
+  "short_name": "ORZU Oshpaz",
+  "start_url": "/oshpaz",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#101112",
+  "theme_color": "#101112",
+  "icons": [
+    {
+      "src": "/station/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
