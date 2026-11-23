@@ -447,6 +447,28 @@ app.get('/api/waiters', (_q, s) => {
   s.json(CFG.waiters.map(({ id, name }) => ({ id, name })));
 });
 
+app.get('/api/station/orders', stationAuth, (q, s) => {
+  const station = String(q.query.station || '');
+  const orders = O.list.filter(o => o.status !== 'paid').slice().sort((a,b) => a.time - b.time).map(o => ({
+    id: o.id, table: o.table, waiterName: o.waiterName, time: o.time, status: o.status,
+    items: o.items.map((item, index) => ({ item, index })).filter(x => (x.item.station || (/somsa/i.test(x.item.name) ? 'somsachi' : /salat/i.test(x.item.name) ? 'salatchi' : 'oshpaz')) === station).map(x => ({ index: x.index, name: x.item.name, qty: x.item.qty, kitchenStatus: x.item.kitchenStatus || 'new' }))
+  })).filter(o => o.items.length);
+  s.json({ station, orders });
+});
+app.post('/api/station/item-status', stationAuth, async (q, s) => {
+  const station = String(q.body.station || '');
+  const order = O.list.find(o => String(o.id) === String(q.body.orderId));
+  const index = Number(q.body.itemIndex);
+  const item = order?.items[index];
+  const assigned = item?.station || (/somsa/i.test(item?.name || '') ? 'somsachi' : /salat/i.test(item?.name || '') ? 'salatchi' : 'oshpaz');
+  const next = String(q.body.status || '');
+  if (!order || order.status === 'paid' || !item || assigned !== station) return s.status(404).json({ error: 'Buyurtma yoki mahsulot topilmadi' });
+  if (!['new', 'preparing', 'ready', 'served'].includes(next)) return s.status(400).json({ error: 'Holat noto‘g‘ri' });
+  item.kitchenStatus = next as OrderItem['kitchenStatus'];
+  if (!await save('orders')) return s.status(500).json({ error: 'Holat saqlanmadi' });
+  s.json({ ok: true, orderId: order.id, itemIndex: index, status: next });
+});
+
 // KITCHEN DISPLAY: active orders and per-item preparation states
 app.get('/api/kitchen/orders', kitchen, (_q, s) => {
   const orders = O.list
