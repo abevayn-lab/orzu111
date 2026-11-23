@@ -378,8 +378,15 @@ interface WaiterRequest extends Request {
 }
 
 function wt(q: WaiterRequest, s: Response, n: NextFunction) {
-  const wid = q.query.id || (q.body && q.body.id);
-  const wpin = q.query.pin || (q.body && q.body.pin);
+  let headerCredentials: { id?: string | number; pin?: string } = {};
+  const raw = String(q.headers['x-waiter'] || '');
+  if (raw) {
+    try {
+      headerCredentials = JSON.parse(Buffer.from(raw, 'base64').toString('utf8'));
+    } catch { /* Keep legacy query/body authentication for older clients. */ }
+  }
+  const wid = headerCredentials.id ?? q.query.id ?? (q.body && q.body.id);
+  const wpin = headerCredentials.pin ?? q.query.pin ?? (q.body && q.body.pin);
   const w = CFG.waiters.find(w => String(w.id) === String(wid) && String(w.pin) === String(wpin));
   if (!w) return s.status(401).json({ error: 'auth' });
   q.w = w;
