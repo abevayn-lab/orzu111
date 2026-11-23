@@ -595,27 +595,29 @@
     }
 
     async function printTicket(orderId) {
-      // 1. Queue to server print jobs (safe across HTTPS and mobile devices)
+      // Asosiy yo‘l: server navbati. Lokal bridge navbatni o‘zi tekshiradi;
+      // shu sababli bir chekni ikki marta yubormaslik uchun parallel POST qilmaymiz.
       try {
-        await api('/api/cashier/print', 'POST', { orderId, printerIp: $('printerIp')?.value });
+        await api('/api/cashier/print', 'POST', {
+          orderId,
+          printerIp: $('printerIp')?.value.trim() || DATA.settings?.printerIp || '192.168.1.51'
+        });
+        return true;
       } catch (err) {
-        console.warn('Server print queue error:', err);
+        console.warn('Server print queue error, local bridge fallback:', err);
       }
 
-      // 2. Also try direct local bridge if running on same desktop
-      try {
-        const printerIp = $('printerIp')?.value.trim() || DATA.settings?.printerIp || '192.168.1.51';
-        const order = DATA.orders.find(x => Number(x.id) === orderId);
-        if (order) {
-          await fetch('http://127.0.0.1:17891/print', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ printerIp, order })
-          });
-        }
-      } catch (e) {
-        // Ignored as server queue handles it
-      }
+      // Server navbati ishlamasa, shu kompyuterdagi bridge'ga bevosita yuboramiz.
+      const printerIp = $('printerIp')?.value.trim() || DATA.settings?.printerIp || '192.168.1.51';
+      const order = DATA.orders.find(x => Number(x.id) === orderId);
+      if (!order) throw new Error('Buyurtma topilmadi');
+      const response = await fetch('http://127.0.0.1:17891/print', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ printerIp, order })
+      });
+      if (!response.ok) throw new Error('Lokal printer bridge chekni qabul qilmadi');
+      return true;
     }
 
     async function markPaid(id) {
