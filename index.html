@@ -246,15 +246,28 @@
   </div>
 
   <script>
-    const QR_TABLE_PARAM = new URLSearchParams(location.search).get('table');
-    const TABLE_LOCKED = QR_TABLE_PARAM !== null && /^[A-Za-z0-9_-]{1,12}$/.test(QR_TABLE_PARAM.trim());
+    const QR_PARAMS = new URLSearchParams(location.search);
+    const QR_TABLE_PARAM = QR_PARAMS.get('table');
+    let QR_TOKEN = QR_PARAMS.get('qr') || '';
+    const TABLE_LOCKED = QR_TABLE_PARAM !== null && /^[A-Za-z0-9_-]{1,20}$/.test(QR_TABLE_PARAM.trim());
+    let QR_INVALID = false;
     let T = TABLE_LOCKED ? QR_TABLE_PARAM.trim() : '1';
     let M = [], C = [], cat = 0, cart = {};
     const f = n => Number(n || 0).toLocaleString('uz-UZ') + " so'm";
 
     async function init() {
       try {
-        const res = await fetch('/api/menu');
+        if (TABLE_LOCKED && QR_TOKEN) {
+          const verifyUrl = '/api/qr/verify?table=' + encodeURIComponent(T) + '&qr=' + encodeURIComponent(QR_TOKEN);
+          const verifyResponse = await fetch(verifyUrl, { cache: 'no-store' });
+          const verifyData = await verifyResponse.json().catch(() => ({}));
+          if (!verifyResponse.ok || !verifyData.valid) {
+            QR_INVALID = true;
+            alert(verifyData.error || 'Stol QR kodi tasdiqlanmadi. Admin orqali yangi QR kod oling.');
+          }
+        }
+        const res = await fetch('/api/menu', { cache: 'no-store' });
+        if (!res.ok) throw new Error('Menyu yuklanmadi');
         const data = await res.json();
         C = data.cats || [];
         M = data.menu || [];
@@ -262,6 +275,7 @@
         show();
       } catch (e) {
         console.error('Menu load error:', e);
+        alert('Menyuni yuklab bo‘lmadi. Internetni tekshirib, qayta urinib ko‘ring.');
       }
     }
 
@@ -357,6 +371,7 @@
     }
 
     async function send() {
+      if (QR_INVALID) return alert('Bu QR kod yaroqsiz. Iltimos, admin bergan yangi stol QR kodini skanerlang.');
       const t = TABLE_LOCKED ? T : document.getElementById('tn').value.trim();
       if (!t) return alert('Iltimos, stol raqamini kiriting!');
       const items = Object.entries(cart)
@@ -369,7 +384,7 @@
         const res = await fetch('/api/order', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ table: t, items })
+          body: JSON.stringify({ table: t, items, qr: QR_TOKEN })
         });
         const r = await res.json();
         if (r.error) return alert(r.error);
