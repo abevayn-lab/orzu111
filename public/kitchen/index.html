@@ -29,7 +29,7 @@ input{width:100%;margin:12px 0}button{cursor:pointer;font-weight:700}button:disa
   </style>
 </head>
 <body>
-<header><div><h1>ORZU · OSHXONA</h1><small id="updated">Buyurtmalar yuklanmoqda…</small></div><button onclick="load()">↻ Yangilash</button></header>
+<header><div><h1>ORZU · OSHXONA</h1><small id="updated">Buyurtmalar yuklanmoqda…</small></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button onclick="load()">↻ Yangilash</button><button onclick="closeDay()">🌙 Kunlik yopish</button></div></header>
 <main>
 <section id="login" class="login" hidden><h2 style="color:var(--gold);margin-top:0">Oshxona tizimiga kirish</h2><p><small>Oshxona parolini kiriting.</small></p><input id="pass" type="password" placeholder="Parol"><button class="primary" style="width:100%" onclick="login()">Kirish</button><p id="error" style="color:#ff9b91"></p></section>
 <section id="board"><div class="stats" id="stats"></div><div style="height:14px"></div><div id="tickets" class="grid"></div></section>
@@ -51,7 +51,7 @@ function render(data){
  document.getElementById('updated').textContent='Oxirgi yangilanish: '+new Date().toLocaleTimeString('uz-UZ');
 }
 async function load(){if(busy)return;try{const data=await api('/api/kitchen/orders');render(data)}catch(e){if(e.message==='Parol noto‘g‘ri'){localStorage.removeItem('orzu-kitchen-pass');secret='';showLogin(e.message)}else document.getElementById('updated').textContent=e.message}}
-async function setStatus(orderId,itemIndex,status){if(busy)return;busy=true;try{await api('/api/kitchen/item-status','POST',{orderId,itemIndex,status})}catch(e){alert(e.message)}finally{busy=false;await load()}}
+async function closeDay(){if(busy)return;if(!confirm('Oshxonaning bugungi ish kunini yopasizmi? Bugungi faol buyurtmalar oshxona ekranidan yashiriladi, lekin buyurtmalar tarixi va kassadagi ma’lumotlar o‘chmaydi.'))return;busy=true;try{const d=await api('/api/kitchen/close-day','POST',{});await load();alert('Oshxona kuni yopildi. '+(d.summary?.orders||0)+' ta buyurtma, '+(d.summary?.quantity||0)+' porsiya. Tarix saqlandi.')}catch(e){alert('Kun yopilmadi: '+e.message)}finally{busy=false;}}async function setStatus(orderId,itemIndex,status){if(busy)return;busy=true;try{await api('/api/kitchen/item-status','POST',{orderId,itemIndex,status})}catch(e){alert(e.message)}finally{busy=false;await load()}}
 document.getElementById('pass').addEventListener('keydown',e=>{if(e.key==='Enter')login()});
 if(secret){document.getElementById('board').hidden=false;load()}else showLogin();
 setInterval(load,4000);
