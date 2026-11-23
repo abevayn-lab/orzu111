@@ -1139,6 +1139,7 @@ app.get('/', (_q, s) => {
   s.send('ORZU Restoran Menyusi');
 });
 
+app.get(['/menyu', '/menyu/'], (_q, s) => sendHtml(s, 'menu-view'));
 app.get(['/cashier', '/cashier/'], (_q, s) => sendHtml(s, 'cashier'));
 app.get(['/waiter', '/waiter/'], (_q, s) => sendHtml(s, 'waiter'));
 app.get(['/kitchen', '/kitchen/'], (_q, s) => sendHtml(s, 'kitchen'));
