@@ -131,34 +131,45 @@
     .btn.sm { padding: 6px 12px; font-size: 12px; }
     .btn.red { background: #7a1f1f; color: #fff; border-color: #a83232; }
     .quick-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+    /* Pastki navigatsiya: bo‘limlar bir qatorda chapdan o‘ngga joylashadi. */
     #bottomNav {
       position: fixed;
       z-index: 10000;
       left: 0; right: 0; bottom: 0;
-      display: grid;
-      display: flex; justify-content: flex-start; overflow-x: auto; scrollbar-width: none;
-      gap: 2px;
-      padding: 8px 4px calc(8px + env(safe-area-inset-bottom));
-      background: rgba(16, 12, 9, 0.96);
+      display: flex;
+      flex-direction: row;
+      flex-wrap: nowrap;
+      justify-content: flex-start;
+      align-items: center;
+      overflow-x: auto;
+      overflow-y: hidden;
+      scrollbar-width: none;
+      gap: 6px;
+      padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
+      background: rgba(16, 12, 9, 0.97);
       border-top: 1px solid #956b31;
       backdrop-filter: blur(12px);
     }
+    #bottomNav::-webkit-scrollbar { display: none; }
     #bottomNav .navitem {
-      flex: 0 0 14.285%;
-      min-width: 66px;
-      border: 0;
-      background: transparent;
+      flex: 0 0 auto;
+      min-width: max-content;
+      border: 1px solid rgba(149, 107, 49, 0.45);
+      border-radius: 12px;
+      background: rgba(255, 227, 154, 0.06);
       color: #c8b99f;
       display: flex;
-      flex-direction: column;
+      flex-direction: row;
       align-items: center;
-      gap: 3px;
-      padding: 6px 2px;
-      font-size: 10px;
+      justify-content: center;
+      gap: 7px;
+      white-space: nowrap;
+      padding: 9px 13px;
+      font-size: 12px;
       font-weight: 700;
       cursor: pointer;
     }
-    #bottomNav .navitem b { font-size: 19px; color: #e5bd6d; }
+    #bottomNav .navitem b { font-size: 18px; line-height: 1; color: #e5bd6d; }
     #bottomNav .navitem.active { color: #ffe39a; }
     #bottomNav .navitem.active b { color: #ffe39a; text-shadow: 0 0 12px #e8b94b; }
     input, select {
@@ -262,7 +273,7 @@
       if (!P) return login();
       try {
         D = await api('/api/admin/data');
-        bottomNav.style.display = 'grid';
+        bottomNav.style.display = 'flex';
         if (bg && (tab === 2 || tab === 5 || tab === 6 || /^(INPUT|SELECT|TEXTAREA)$/.test((document.activeElement || {}).tagName || ''))) return;
         render();
       } catch (e) {
