@@ -36,7 +36,7 @@ jobs:
           ];
           for (const file of pages) {
             const html = fs.readFileSync(file, 'utf8');
-            const scripts = [...html.matchAll(/<script\\b[^>]*>([\\s\\S]*?)<\\/script>/gi)];
+            const scripts = [...html.matchAll(/<script\b[^>]*>([\s\\S]*?)<\/script>/gi)];
             if (!scripts.length) throw new Error(file + ': no inline scripts found');
             scripts.forEach((match, index) => {
               try { new Function(match[1]); }
