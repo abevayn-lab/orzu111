@@ -315,6 +315,15 @@ function stationForMenuItem(menu: MenuItem): 'somsachi' | 'salatchi' | 'oshpaz' 
   if (!isDrink && (name.includes('salat') || category.includes('salat'))) return 'salatchi';
   return 'oshpaz';
 }
+function stationForOrderItem(item: OrderItem): 'somsachi' | 'salatchi' | 'oshpaz' {
+  if (item.station) return item.station;
+  const menu = CFG.menu.find(m => m.name === item.name);
+  if (menu) return stationForMenuItem(menu);
+  const name = String(item.name || '').toLowerCase();
+  if (name.includes('somsa')) return 'somsachi';
+  if (name.includes('salat')) return 'salatchi';
+  return 'oshpaz';
+}
 function stationPass(station: string): string | null {
   if (station === 'somsachi') return SOMSACHI_PASS;
   if (station === 'salatchi') return SALATCHI_PASS;
@@ -477,7 +486,7 @@ app.get('/api/station/orders', stationAuth, (q, s) => {
   const station = String(q.query.station || '');
   const orders = O.list.filter(o => o.status !== 'paid').slice().sort((a,b) => a.time - b.time).map(o => ({
     id: o.id, table: o.table, waiterName: o.waiterName, time: o.time, status: o.status,
-    items: o.items.map((item, index) => ({ item, index })).filter(x => (x.item.station || (/somsa/i.test(x.item.name) ? 'somsachi' : /salat/i.test(x.item.name) ? 'salatchi' : 'oshpaz')) === station).map(x => ({ index: x.index, name: x.item.name, qty: x.item.qty, kitchenStatus: x.item.kitchenStatus || 'new' }))
+    items: o.items.map((item, index) => ({ item, index })).filter(x => stationForOrderItem(x.item) === station).map(x => ({ index: x.index, name: x.item.name, qty: x.item.qty, kitchenStatus: x.item.kitchenStatus || 'new' }))
   })).filter(o => o.items.length);
   s.json({ station, orders });
 });
@@ -486,7 +495,7 @@ app.post('/api/station/item-status', stationAuth, async (q, s) => {
   const order = O.list.find(o => String(o.id) === String(q.body.orderId));
   const index = Number(q.body.itemIndex);
   const item = order?.items[index];
-  const assigned = item?.station || (/somsa/i.test(item?.name || '') ? 'somsachi' : /salat/i.test(item?.name || '') ? 'salatchi' : 'oshpaz');
+  const assigned = item ? stationForOrderItem(item) : '';
   const next = String(q.body.status || '');
   if (!order || order.status === 'paid' || !item || assigned !== station) return s.status(404).json({ error: 'Buyurtma yoki mahsulot topilmadi' });
   if (!['new', 'preparing', 'ready', 'served'].includes(next)) return s.status(400).json({ error: 'Holat noto‘g‘ri' });
