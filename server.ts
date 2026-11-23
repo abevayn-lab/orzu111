@@ -308,19 +308,22 @@ function secretHeaderMatches(q: Request, headerName: string, expected: string) {
 }
 
 function stationForMenuItem(menu: MenuItem): 'somsachi' | 'salatchi' | 'oshpaz' {
-  const name = String(menu.name || '').toLowerCase();
-  const category = String(CFG.cats[Number(menu.cat)] || '').toLowerCase();
-  if (name.includes('somsa')) return 'somsachi';
+  const name = String(menu.name || '').trim().toLowerCase();
+  const category = String(CFG.cats[Number(menu.cat)] || '').trim().toLowerCase();
+  // Menu name/category is the source of truth, including common "samsa" spelling.
+  if (/(somsa|samsa)/i.test(name) || /(somsa|samsa)/i.test(category)) return 'somsachi';
   const isDrink = /(choy|cola|coca|pepsi|fanta|sprite|suv|ayron|sharbat|sok|limonad)/i.test(name);
   if (!isDrink && (name.includes('salat') || category.includes('salat'))) return 'salatchi';
   return 'oshpaz';
 }
 function stationForOrderItem(item: OrderItem): 'somsachi' | 'salatchi' | 'oshpaz' {
-  if (item.station) return item.station;
-  const menu = CFG.menu.find(m => m.name === item.name);
+  // Recalculate against the current menu first: old/stale station tags must not
+  // keep a somsa or salad trapped in the wrong production queue.
+  const menu = CFG.menu.find(m => String(m.name || '').trim().toLowerCase() === String(item.name || '').trim().toLowerCase());
   if (menu) return stationForMenuItem(menu);
+  if (item.station === 'somsachi' || item.station === 'salatchi' || item.station === 'oshpaz') return item.station;
   const name = String(item.name || '').toLowerCase();
-  if (name.includes('somsa')) return 'somsachi';
+  if (/(somsa|samsa)/i.test(name)) return 'somsachi';
   if (name.includes('salat')) return 'salatchi';
   return 'oshpaz';
 }
