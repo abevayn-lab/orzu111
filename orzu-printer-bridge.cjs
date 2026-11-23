@@ -33,64 +33,78 @@ function line(s = '') {
   return Buffer.from(esc(s) + '\n', 'ascii');
 }
 
-// YANGI IXCHAM ORZU CHEK DIZAYNI
+// 80 mm receipt styled to match the supplied ORZU sample.
 function makeReceipt(o) {
+  const W = 42;
+  const items = Array.isArray(o.items) ? o.items : [];
+  const qtyOf = it => Math.max(0, Number(it.qty) || 0);
+  const priceOf = it => Math.max(0, Number(it.price) || 0);
+  const subtotal = items.reduce((sum, it) => sum + qtyOf(it) * priceOf(it), 0);
+  // 5% service charge, rounded to the nearest 1,000 so the printed
+  // amounts match the supplied sample (43,000 -> 2,000).
+  const service = Math.round((subtotal * 0.05) / 1000) * 1000;
+  const grandTotal = subtotal + service;
+
+  const pad = (s, n) => esc(s).slice(0, n).padEnd(n, ' ');
+  const right = (s, n) => esc(s).slice(-n).padStart(n, ' ');
+  const amount = n => (Math.round(Number(n) || 0) / 1).toFixed(2);
+  const rule = '-'.repeat(W);
+  const date = new Date(o.paidAt || o.time || Date.now());
+  const opened = new Date(o.createdAt || o.openedAt || o.time || date);
+  const dateText = d => d.toLocaleDateString('en-GB');
+  const timeText = d => d.toLocaleTimeString('en-GB', {hour:'2-digit', minute:'2-digit', hour12:false});
+  const table = o.table ?? o.tableNumber ?? '-';
+  const guests = o.guests ?? o.guestCount ?? 0;
+  const cashier = o.cashierName || o.cashier || 'Admin';
+  const waiter = o.waiterName || o.waiter || 'Admin';
+  const orderNo = o.id ?? '-';
+
   const out = [
     Buffer.from([0x1b, 0x40]),
     Buffer.from([0x1b, 0x61, 0x01]),
     Buffer.from([0x1b, 0x45, 0x01]),
-    Buffer.from([0x1d, 0x21, 0x10]),
-    line('TASHRIFINGIZ UCHUN RAHMAT!'),
-    Buffer.from([0x1b, 0x45, 0x00]),
-    line('================================================'),
-    Buffer.from([0x1d, 0x21, 0x10]),
-    line('ORZU'),
+    Buffer.from([0x1d, 0x21, 0x11]),
+    line('ORZU RESTAURANT'),
     Buffer.from([0x1d, 0x21, 0x00]),
-    line('RESTAURANT'),
-    line('ARNASOY'),
-    Buffer.from([0x1b, 0x45, 0x00])
+    Buffer.from([0x1b, 0x45, 0x00]),
+    Buffer.from([0x1b, 0x61, 0x00]),
+    line('Chek #' + orderNo + '          Stol ' + table + '   Mehmon ' + guests),
+    line(dateText(date) + '  Ochilgan ' + timeText(opened) + '  Chop etildi ' + timeText(date)),
+    line('Kassir: ' + cashier),
+    line('Ofitsiant: ' + waiter),
+    line(rule),
+    line(pad('Taom', 23) + right('Soni', 7) + right('Summa', 12)),
+    line(rule)
   ];
 
-  out.push(
-    Buffer.from([0x1b, 0x61, 0x00]),
-    Buffer.from([0x1b, 0x45, 0x01]),
-    line('BUYURTMA #' + (o.id ?? '-')),
-    Buffer.from([0x1b, 0x45, 0x00]),
-    line('Stol: ' + (o.table ?? '-')),
-    line('Ofitsiant: ' + (o.waiterName || '-')),
-    line(new Date(o.paidAt || o.time || Date.now()).toLocaleString('uz-UZ')),
-    line('------------------------------------------------')
-  );
-
-  const items = Array.isArray(o.items) ? o.items : [];
-  // Chek jami faqat chekda chop etilayotgan mahsulot qatorlaridan hisoblanadi.
-  // Serverdagi eski/stale total yoki avvalgi 5% xizmat haqi qayta qo'shilmaydi.
-  const receiptTotal = items.reduce((sum, it) => {
-    const qty = Math.max(0, Number(it.qty) || 0);
-    const price = Math.max(0, Number(it.price) || 0);
-    return sum + price * qty;
-  }, 0);
-
   for (const it of items) {
-    const name = esc(it.name || 'Mahsulot').slice(0, 48);
-    const qty = Math.max(0, Number(it.qty) || 0);
-    const price = Math.max(0, Number(it.price) || 0);
-    const total = money(price * qty);
-
-    out.push(
-      line(name),
-      line(qty + ' x ' + money(price) + ' = ' + total)
-    );
+    const name = esc(it.name || 'Mahsulot');
+    const qty = qtyOf(it);
+    const total = qty * priceOf(it);
+    const qtyText = qty.toFixed(2);
+    const sumText = amount(total);
+    const nameLines = [];
+    for (let i = 0; i < name.length; i += 23) nameLines.push(name.slice(i, i + 23));
+    if (!nameLines.length) nameLines.push('Mahsulot');
+    out.push(line(pad(nameLines[0], 23) + right(qtyText, 7) + right(sumText, 12)));
+    for (const extra of nameLines.slice(1)) out.push(line(extra));
   }
 
   out.push(
-    line('--------------------------------'),
+    line(rule),
+    line(pad('Jami:', 30) + right(amount(subtotal), 12)),
+    line(pad('Xizmat 5%:', 30) + right(amount(service), 12)),
+    line(rule),
     Buffer.from([0x1b, 0x45, 0x01]),
-    line('JAMI: ' + money(receiptTotal)),
+    Buffer.from([0x1d, 0x21, 0x11]),
+    line(pad('Sum:', 16) + right(amount(grandTotal), 20)),
+    Buffer.from([0x1d, 0x21, 0x00]),
     Buffer.from([0x1b, 0x45, 0x00]),
-    line('Tolov: ' + esc(o.paymentMethod || 'Naqd')),
-    line('================================================'),
+    line(rule),
     Buffer.from([0x1b, 0x61, 0x01]),
+    line('TASHRIFINGIZ UCHUN RAHMAT!'),
+    line('INSTAGRAM sahifamizga obuna'),
+    line('@orzu_arnasoy'),
     line(''),
     Buffer.from([0x1d, 0x56, 0x42, 0x00])
   );
