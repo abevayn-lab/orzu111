@@ -454,9 +454,10 @@
         O = nextO;
         SHIFT = nextShift;
 
-        const fresh = O.filter(o => o.status === 'new' && !firstOrdersLoad && !knownNewIds.has(String(o.id)));
+        const fresh = O.filter(o => o.status === 'new' && !firstOrdersLoad && !knownNewIds.has(String(o.id) + ':' + String(o.time)));
         fresh.forEach(beep);
-        knownNewIds = new Set(O.filter(o => o.status === 'new').map(o => String(o.id)));
+        // The same order ID can receive another QR order; its updated time is a new alert event.
+        knownNewIds = new Set(O.filter(o => o.status === 'new').map(o => String(o.id) + ':' + String(o.time)));
         firstOrdersLoad = false;
         draw();
       } catch (e) {
