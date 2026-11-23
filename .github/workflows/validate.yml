@@ -1,0 +1,62 @@
+name: ORZU validation
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: TypeScript check
+        run: npm run build
+      - name: Validate browser scripts and PWA manifests
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const pages = [
+            'index.html',
+            'public/admin/index.html',
+            'public/waiter/index.html',
+            'public/cashier/index.html',
+            'public/administrator/index.html',
+            'public/kitchen/index.html',
+            'public/station/index.html',
+            'public/menu-view/index.html'
+          ];
+          for (const file of pages) {
+            const html = fs.readFileSync(file, 'utf8');
+            const scripts = [...html.matchAll(/<script\\b[^>]*>([\\s\\S]*?)<\\/script>/gi)];
+            if (!scripts.length) throw new Error(file + ': no inline scripts found');
+            scripts.forEach((match, index) => {
+              try { new Function(match[1]); }
+              catch (error) { throw new Error(file + ' script ' + (index + 1) + ': ' + error.message); }
+            });
+          }
+          for (const file of [
+            'public/station/manifest-somsachi.webmanifest',
+            'public/station/manifest-salatchi.webmanifest',
+            'public/station/manifest-oshpaz.webmanifest'
+          ]) {
+            const manifest = JSON.parse(fs.readFileSync(file, 'utf8'));
+            if (!manifest.name || !manifest.short_name || !manifest.start_url || manifest.display !== 'standalone') {
+              throw new Error(file + ': required PWA fields are missing');
+            }
+            for (const size of ['192x192', '512x512']) {
+              if (!manifest.icons?.some(icon => icon.sizes === size && fs.existsSync('public' + icon.src))) {
+                throw new Error(file + ': missing icon ' + size);
+              }
+            }
+          }
+          console.log('All app scripts and PWA manifests passed.');
+          NODE
