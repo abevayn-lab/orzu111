@@ -573,7 +573,12 @@ app.post('/api/waiter/presence', wt, async (q: WaiterRequest, s: Response) => {
     if (openSession) openSession.end = now;
   }
 
-  await save('orders');
+  const saved = await save('orders');
+  if (!saved) {
+    currentShift.online = !online;
+    currentShift.sessions = (currentShift.sessions || []).filter(x => x.start !== now);
+    return s.status(500).json({ error: 'Smena holati bazaga saqlanmadi. Qayta urinib ko‘ring.' });
+  }
   s.json({
     ok: true,
     waiterId: wid,
@@ -597,20 +602,28 @@ app.get('/api/waiter/orders', wt, (q: WaiterRequest, s: Response) => {
 });
 
 // WAITER CLOSE DAY
-app.post('/api/waiter/close-day', wt, (q: WaiterRequest, s: Response) => {
+app.post('/api/waiter/close-day', wt, async (q: WaiterRequest, s: Response) => {
   const wid = q.w!.id;
+  const previous = Number(O.dayClosures.waiters[wid] || 0);
   O.dayClosures.waiters[wid] = Date.now();
-  save('orders');
+  if (!await save('orders')) {
+    O.dayClosures.waiters[wid] = previous;
+    return s.status(500).json({ error: 'Kun yopilishi bazaga saqlanmadi.' });
+  }
   s.json({ ok: true, closedAt: O.dayClosures.waiters[wid] });
 });
 
 // WAITER STATUS
-app.post('/api/waiter/status', wt, (q: WaiterRequest, s: Response) => {
+app.post('/api/waiter/status', wt, async (q: WaiterRequest, s: Response) => {
   const wid = q.w!.id;
   const o = O.list.find(o => o.id == q.body.orderId && o.waiter === wid);
-  if (o && ['accepted', 'served'].includes(q.body.status)) {
-    o.status = q.body.status;
-    save('orders');
+  if (!o) return s.status(404).json({ error: 'Buyurtma topilmadi' });
+  if (!['accepted', 'served'].includes(q.body.status)) return s.status(400).json({ error: 'Buyurtma holati noto‘g‘ri' });
+  const previous = o.status;
+  o.status = q.body.status;
+  if (!await save('orders')) {
+    o.status = previous;
+    return s.status(500).json({ error: 'Buyurtma holati saqlanmadi.' });
   }
   s.json({ ok: 1 });
 });
@@ -682,7 +695,10 @@ app.post('/api/waiter/print', wt, async (q: WaiterRequest, s: Response) => {
     order: { ...o, waiterName: o.waiterName || q.w!.name }
   };
   O.printJobs.push(job);
-  await save('orders');
+  if (!await save('orders')) {
+    O.printJobs = O.printJobs.filter(x => x.id !== job.id);
+    return s.status(500).json({ error: 'Chek printer navbatiga saqlanmadi.' });
+  }
   s.json({ ok: true, message: 'Chek printer navbatiga yuborildi', jobId: job.id });
 });
 
@@ -766,7 +782,8 @@ app.post('/api/cashier/waiter-presence', cashier, async (q, s) => {
     const openSession = [...(shift.sessions || [])].reverse().find(x => !x.end);
     if (openSession) openSession.end = now;
   }
-  await save('orders');
+  const saved = await save('orders');
+  if (!saved) return s.status(500).json({ error: 'Ofitsiant smenasi bazaga saqlanmadi.' });
   s.json({
     ok: true,
     waiterId: waiter.id,
@@ -778,13 +795,17 @@ app.post('/api/cashier/waiter-presence', cashier, async (q, s) => {
 });
 
 // CASHIER SETTINGS
-app.post('/api/cashier/settings', cashier, (q, s) => {
+app.post('/api/cashier/settings', cashier, async (q, s) => {
   const ip = String(q.body.printerIp || '').trim();
   if (!/^\d{1,3}(\.\d{1,3}){3}$/.test(ip) || ip.split('.').some(x => Number(x) > 255)) {
     return s.status(400).json({ error: 'Printer IP manzilini to‘g‘ri kiriting' });
   }
+  const previous = O.cashierSettings;
   O.cashierSettings = { ...(O.cashierSettings || {}), printerIp: ip };
-  save('orders');
+  if (!await save('orders')) {
+    O.cashierSettings = previous;
+    return s.status(500).json({ error: 'Printer sozlamasi saqlanmadi.' });
+  }
   s.json({ ok: true, settings: O.cashierSettings });
 });
 
@@ -909,7 +930,7 @@ app.post('/api/cashier/pay', cashier, async (q, s) => {
 });
 
 // CASHIER CLOSE DAY
-app.post('/api/cashier/close-day', cashier, (_q, s) => {
+app.post('/api/cashier/close-day', cashier, async (_q, s) => {
   const closedAt = Number(O.dayClosures.cashier || 0);
   const currentOrders = O.list.filter(o => Number(o.time || 0) >= closedAt);
   const pending = currentOrders.filter(o => o.status !== 'paid');
@@ -920,7 +941,10 @@ app.post('/api/cashier/close-day', cashier, (_q, s) => {
     total: paid.reduce((sum, o) => sum + Number(o.total || 0), 0)
   };
   O.dayClosures.cashier = Date.now();
-  save('orders');
+  if (!await save('orders')) {
+    O.dayClosures.cashier = closedAt;
+    return s.status(500).json({ error: 'Kassir kuni yopilmadi: baza saqlamadi.' });
+  }
   s.json({ ok: true, closedAt: O.dayClosures.cashier, summary, historyPreserved: true });
 });
 
@@ -941,9 +965,13 @@ app.get('/api/admin/data', adm, (_q, s) => {
 });
 
 // ADMIN CLOSE DAY
-app.post('/api/admin/close-day', adm, (_q, s) => {
+app.post('/api/admin/close-day', adm, async (_q, s) => {
+  const previous = O.dayClosures.admin;
   O.dayClosures.admin = Date.now();
-  save('orders');
+  if (!await save('orders')) {
+    O.dayClosures.admin = previous;
+    return s.status(500).json({ error: 'Admin kuni yopilmadi: baza saqlamadi.' });
+  }
   s.json({ ok: true, closedAt: O.dayClosures.admin });
 });
 
@@ -957,14 +985,18 @@ app.get('/api/administrator/data', administrator, (_q, s) => {
 });
 
 // ADMINISTRATOR CLOSE DAY
-app.post('/api/administrator/close-day', administrator, (_q, s) => {
+app.post('/api/administrator/close-day', administrator, async (_q, s) => {
+  const previous = O.dayClosures.administrator;
   O.dayClosures.administrator = Date.now();
-  save('orders');
+  if (!await save('orders')) {
+    O.dayClosures.administrator = previous;
+    return s.status(500).json({ error: 'Administrator kuni yopilmadi: baza saqlamadi.' });
+  }
   s.json({ ok: true, closedAt: O.dayClosures.administrator });
 });
 
 // ADMIN CATEGORY ADD
-app.post('/api/admin/category', adm, (q, s) => {
+app.post('/api/admin/category', adm, async (q, s) => {
   const name = String(q.body.name || '').trim();
   if (!name) return s.status(400).json({ error: 'Bo‘lim nomini kiriting' });
   if (name.length > 40) return s.status(400).json({ error: 'Bo‘lim nomi 40 belgidan oshmasin' });
@@ -972,7 +1004,10 @@ app.post('/api/admin/category', adm, (q, s) => {
     return s.status(400).json({ error: 'Bu bo‘lim allaqachon bor' });
   }
   CFG.cats.push(name);
-  save('cfg');
+  if (!await save('cfg')) {
+    CFG.cats.pop();
+    return s.status(500).json({ error: 'Bo‘lim bazaga saqlanmadi.' });
+  }
   s.json({ ok: 1, cats: CFG.cats });
 });
 
@@ -993,12 +1028,12 @@ app.post('/api/admin/categories/reorder', adm, async (q, s) => {
     return { ...item, cat: newCategory === undefined ? 0 : newCategory };
   });
   CFG.cats = requested.slice();
-  await save('cfg');
+  if (!await save('cfg')) return s.status(500).json({ error: 'Bo‘limlar tartibi bazaga saqlanmadi.' });
   s.json({ ok: true, cats: CFG.cats });
 });
 
 // ADMIN CATEGORY DELETE
-app.delete('/api/admin/category/:index', adm, (q, s) => {
+app.delete('/api/admin/category/:index', adm, async (q, s) => {
   const index = Number(q.params.index);
   if (!Number.isInteger(index) || index < 0 || index >= CFG.cats.length) {
     return s.status(400).json({ error: 'Bo‘lim topilmadi' });
@@ -1006,6 +1041,8 @@ app.delete('/api/admin/category/:index', adm, (q, s) => {
   if (CFG.cats.length <= 1) {
     return s.status(400).json({ error: 'Kamida bitta bo‘lim qolishi kerak' });
   }
+  const previousCats = CFG.cats.slice();
+  const previousMenu = CFG.menu;
   const fallback = CFG.cats.findIndex((_, i) => i !== index);
   CFG.menu = CFG.menu.map(item => {
     let cat = Number(item.cat);
@@ -1014,12 +1051,17 @@ app.delete('/api/admin/category/:index', adm, (q, s) => {
     return { ...item, cat };
   });
   CFG.cats.splice(index, 1);
-  save('cfg');
+  if (!await save('cfg')) {
+    CFG.cats = previousCats;
+    CFG.menu = previousMenu;
+    return s.status(500).json({ error: 'Bo‘lim o‘chirish saqlanmadi.' });
+  }
   s.json({ ok: 1, cats: CFG.cats });
 });
 
 // ADMIN MENU ADD / EDIT
-app.post('/api/admin/menu', adm, (q, s) => {
+app.post('/api/admin/menu', adm, async (q, s) => {
+  const previousMenu = CFG.menu.map(item => ({ ...item }));
   const b = q.body;
   const m = CFG.menu.find(m => m.id == b.id);
   if (m) {
@@ -1043,23 +1085,34 @@ app.post('/api/admin/menu', adm, (q, s) => {
       hidden: false
     });
   }
-  save('cfg');
+  if (!await save('cfg')) {
+    CFG.menu = previousMenu;
+    return s.status(500).json({ error: 'Menyu bazaga saqlanmadi.' });
+  }
   s.json({ ok: 1 });
 });
 
 // ADMIN RESET STATS AND CLEAR ALL ORDERS
 app.post('/api/admin/reset-stats', adm, async (_q, s) => {
   // Preserve the complete order history; only move the reporting start point.
+  const previous = O.statsResetAt;
   O.statsResetAt = Date.now();
-  await save('orders');
+  if (!await save('orders')) {
+    O.statsResetAt = previous;
+    return s.status(500).json({ error: 'Statistika yangilanmadi: baza saqlamadi.' });
+  }
   s.json({ ok: true, statsResetAt: O.statsResetAt, ordersCleared: false });
 });
 
 // ADMIN DELETE MENU
-app.delete('/api/admin/menu/:id', adm, (q, s) => {
+app.delete('/api/admin/menu/:id', adm, async (q, s) => {
   const targetId = Number(q.params.id);
+  const previousMenu = CFG.menu;
   CFG.menu = CFG.menu.filter(m => m.id !== targetId);
-  save('cfg');
+  if (!await save('cfg')) {
+    CFG.menu = previousMenu;
+    return s.status(500).json({ error: 'Taom o‘chirilishi saqlanmadi.' });
+  }
   s.json({ ok: 1 });
 });
 
@@ -1095,20 +1148,29 @@ app.post('/api/admin/waiter-presence', adm, async (q, s) => {
 });
 
 // ADMIN ADD WAITER
-app.post('/api/admin/waiter', adm, (q, s) => {
+app.post('/api/admin/waiter', adm, async (q, s) => {
   const id = Date.now();
+  const previousWaiters = CFG.waiters.slice();
+  const previousShift = O.waiterShifts[id];
   CFG.waiters.push({ id, name: q.body.name, pin: String(q.body.pin) });
   O.waiterShifts[id] = { online: true, onlineAt: Date.now(), offlineAt: 0, sessions: [{ start: Date.now(), end: 0 }] };
-  save('cfg');
-  save('orders');
+  if (!await save('cfg') || !await save('orders')) {
+    CFG.waiters = previousWaiters;
+    if (previousShift) O.waiterShifts[id] = previousShift; else delete O.waiterShifts[id];
+    return s.status(500).json({ error: 'Ofitsiant ma’lumotlari to‘liq saqlanmadi.' });
+  }
   s.json({ ok: 1, id });
 });
 
 // ADMIN DELETE WAITER
-app.delete('/api/admin/waiter/:id', adm, (q, s) => {
+app.delete('/api/admin/waiter/:id', adm, async (q, s) => {
   const targetId = Number(q.params.id);
+  const previousWaiters = CFG.waiters;
   CFG.waiters = CFG.waiters.filter(w => w.id !== targetId);
-  save('cfg');
+  if (!await save('cfg')) {
+    CFG.waiters = previousWaiters;
+    return s.status(500).json({ error: 'Ofitsiant o‘chirilishi saqlanmadi.' });
+  }
   s.json({ ok: 1 });
 });
 
