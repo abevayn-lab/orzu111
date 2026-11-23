@@ -273,7 +273,7 @@
       if (!P) return login();
       try {
         D = await api('/api/admin/data');
-        bottomNav.style.display = 'grid';
+        bottomNav.style.display = 'flex';
         if (bg && (tab === 2 || tab === 5 || tab === 6 || /^(INPUT|SELECT|TEXTAREA)$/.test((document.activeElement || {}).tagName || ''))) return;
         render();
       } catch (e) {
