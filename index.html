@@ -254,6 +254,7 @@
     let T = TABLE_LOCKED ? QR_TABLE_PARAM.trim() : '1';
     let M = [], C = [], cat = 0, cart = {};
     const f = n => Number(n || 0).toLocaleString('uz-UZ') + " so'm";
+    const esc = v => String(v ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
 
     async function init() {
       try {
@@ -281,7 +282,7 @@
 
     function tabs() {
       tb.innerHTML = C.map((c, i) => `
-        <button class="tab ${i === cat ? 'on' : ''}" onclick="cat=${i};tabs();show()">${c}</button>
+        <button class="tab ${i === cat ? 'on' : ''}" onclick="cat=${i};tabs();show()">${esc(c)}</button>
       `).join('');
     }
 
@@ -294,10 +295,10 @@
       g.innerHTML = items.map((m, i) => `
         <div class="card" style="animation-delay:${i * 0.05}s">
           <div class="im">
-            <img src="${m.img || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&auto=format&fit=crop&q=80'}" alt="${m.name}" onerror="this.src='https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&auto=format&fit=crop&q=80'">
+            <img src="${esc(m.img || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&auto=format&fit=crop&q=80')}" alt="${esc(m.name)}" onerror="this.src='https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&auto=format&fit=crop&q=80'">
           </div>
           <div class="p">
-            <h3>${m.name}</h3>
+            <h3>${esc(m.name)}</h3>
             <div class="row">
               <b class="gold">${f(m.price)}</b>
               <div class="q">
@@ -353,7 +354,7 @@
         <div class="sp">
           ${L.map(m => `
             <div class="row" style="padding:9px 0;border-bottom:1px solid #3a2f12">
-              <span>${m.name} × ${cart[m.id]}</span>
+              <span>${esc(m.name)} × ${cart[m.id]}</span>
               <b>${f(m.price * cart[m.id])}</b>
             </div>
           `).join('')}
