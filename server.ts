@@ -20,6 +20,9 @@ const PASS = process.env.ADMIN_PASS || 'admin123';
 const ADMINISTRATOR_PASS = process.env.ADMINISTRATOR_PASS || PASS || 'admin123';
 const CASHIER_PASS = process.env.CASHIER_PASS || PASS || 'admin123';
 const KITCHEN_PASS = process.env.KITCHEN_PASS || PASS || 'admin123';
+const SOMSACHI_PASS = process.env.SOMSACHI_PASS || KITCHEN_PASS;
+const SALATCHI_PASS = process.env.SALATCHI_PASS || KITCHEN_PASS;
+const OSHPAZ_PASS = process.env.OSHPAZ_PASS || KITCHEN_PASS;
 const PRINT_KEY = process.env.ORZU_PRINT_KEY || 'ORZU-LOCAL-PRINT-KEY-9f42c7b1-2026-11';
 const QR_SECRET = process.env.ORZU_QR_SECRET || PASS;
 function makeTableQrToken(table: string) { return createHmac('sha256', QR_SECRET).update('orzu-table:' + table).digest('hex'); }
@@ -75,6 +78,7 @@ interface OrderItem {
   qty: number;
   img?: string;
   kitchenStatus?: 'new' | 'preparing' | 'ready' | 'served';
+  station?: 'somsachi' | 'salatchi' | 'oshpaz';
 }
 
 interface Order {
@@ -303,6 +307,36 @@ function secretHeaderMatches(q: Request, headerName: string, expected: string) {
   catch { return false; }
 }
 
+function stationForMenuItem(menu: MenuItem): 'somsachi' | 'salatchi' | 'oshpaz' {
+  const name = String(menu.name || '').toLowerCase();
+  const category = String(CFG.cats[Number(menu.cat)] || '').toLowerCase();
+  if (name.includes('somsa')) return 'somsachi';
+  const isDrink = /(choy|cola|coca|pepsi|fanta|sprite|suv|ayron|sharbat|sok|limonad)/i.test(name);
+  if (!isDrink && (name.includes('salat') || category.includes('salat'))) return 'salatchi';
+  return 'oshpaz';
+}
+function stationForOrderItem(item: OrderItem): 'somsachi' | 'salatchi' | 'oshpaz' {
+  if (item.station) return item.station;
+  const menu = CFG.menu.find(m => m.name === item.name);
+  if (menu) return stationForMenuItem(menu);
+  const name = String(item.name || '').toLowerCase();
+  if (name.includes('somsa')) return 'somsachi';
+  if (name.includes('salat')) return 'salatchi';
+  return 'oshpaz';
+}
+function stationPass(station: string): string | null {
+  if (station === 'somsachi') return SOMSACHI_PASS;
+  if (station === 'salatchi') return SALATCHI_PASS;
+  if (station === 'oshpaz') return OSHPAZ_PASS;
+  return null;
+}
+function stationAuth(q: Request, s: Response, n: NextFunction) {
+  const station = String(q.params.station || q.query.station || q.body.station || '');
+  const pass = stationPass(station);
+  if (pass && secretHeaderMatches(q, 'x-station', pass)) return n();
+  return s.status(401).json({ error: 'Parol noto‘g‘ri yoki bo‘lim topilmadi' });
+}
+
 // ADMIN AUTH
 function adm(q: Request, s: Response, n: NextFunction) {
   if (secretHeaderMatches(q, 'x-admin', PASS)) return n();
@@ -400,6 +434,7 @@ app.post('/api/order', async (q, s) => {
         name: m.name,
         price: m.price,
         img: m.img || '',
+        station: stationForMenuItem(m),
         qty: Math.min(99, Number(i.qty) | 0)
       });
     }
@@ -445,6 +480,28 @@ app.post('/api/order', async (q, s) => {
 // WAITERS LIST
 app.get('/api/waiters', (_q, s) => {
   s.json(CFG.waiters.map(({ id, name }) => ({ id, name })));
+});
+
+app.get('/api/station/orders', stationAuth, (q, s) => {
+  const station = String(q.query.station || '');
+  const orders = O.list.filter(o => o.status !== 'paid').slice().sort((a,b) => a.time - b.time).map(o => ({
+    id: o.id, table: o.table, waiterName: o.waiterName, time: o.time, status: o.status,
+    items: o.items.map((item, index) => ({ item, index })).filter(x => stationForOrderItem(x.item) === station).map(x => ({ index: x.index, name: x.item.name, qty: x.item.qty, kitchenStatus: x.item.kitchenStatus || 'new' }))
+  })).filter(o => o.items.length);
+  s.json({ station, orders });
+});
+app.post('/api/station/item-status', stationAuth, async (q, s) => {
+  const station = String(q.body.station || '');
+  const order = O.list.find(o => String(o.id) === String(q.body.orderId));
+  const index = Number(q.body.itemIndex);
+  const item = order?.items[index];
+  const assigned = item ? stationForOrderItem(item) : '';
+  const next = String(q.body.status || '');
+  if (!order || order.status === 'paid' || !item || assigned !== station) return s.status(404).json({ error: 'Buyurtma yoki mahsulot topilmadi' });
+  if (!['new', 'preparing', 'ready', 'served'].includes(next)) return s.status(400).json({ error: 'Holat noto‘g‘ri' });
+  item.kitchenStatus = next as OrderItem['kitchenStatus'];
+  if (!await save('orders')) return s.status(500).json({ error: 'Holat saqlanmadi' });
+  s.json({ ok: true, orderId: order.id, itemIndex: index, status: next });
 });
 
 // KITCHEN DISPLAY: active orders and per-item preparation states
@@ -562,7 +619,7 @@ app.post('/api/waiter/add', wt, (q: WaiterRequest, s: Response) => {
   for (const i of q.body.items || []) {
     const m = CFG.menu.find(m => m.id == i.id);
     const qty = Math.min(99, Number(i.qty) | 0);
-    if (m && qty > 0) items.push({ name: m.name, price: m.price, img: m.img || '', qty });
+    if (m && qty > 0) items.push({ name: m.name, price: m.price, img: m.img || '', station: stationForMenuItem(m), qty });
   }
   if (!items.length) {
     return s.status(400).json({ error: 'Taom tanlanmagan' });
@@ -733,7 +790,7 @@ app.post('/api/cashier/create-order', cashier, async (q: Request, s: Response) =
     if (!menu || !Number.isInteger(qty) || qty < 1 || qty > 99) return s.status(400).json({ error: 'Mahsulot yoki miqdor noto‘g‘ri' });
     const existing = items.find(i => i.name === menu.name && i.price === Number(menu.price));
     if (existing) existing.qty += qty;
-    else items.push({ name: menu.name, price: Number(menu.price), img: menu.img || '', qty });
+    else items.push({ name: menu.name, price: Number(menu.price), img: menu.img || '', station: stationForMenuItem(menu), qty });
   }
   const order: Order = {
     id: ++O.seq, table, waiter: 0, waiterName: 'Kassir', items,
@@ -788,7 +845,7 @@ app.post('/api/cashier/update-order', cashier, async (q: Request, s: Response) =
       if (existing.qty + qty > 99) return s.status(400).json({ error: 'Bir mahsulot miqdori 99 tadan oshmasin' });
       existing.qty += qty;
     } else {
-      updatedItems.push({ name: menuItem.name, price: Number(menuItem.price), img: menuItem.img || '', qty });
+      updatedItems.push({ name: menuItem.name, price: Number(menuItem.price), img: menuItem.img || '', station: stationForMenuItem(menuItem), qty });
     }
   }
 
@@ -1075,6 +1132,9 @@ app.get('/', (_q, s) => {
 app.get(['/cashier', '/cashier/'], (_q, s) => sendHtml(s, 'cashier'));
 app.get(['/waiter', '/waiter/'], (_q, s) => sendHtml(s, 'waiter'));
 app.get(['/kitchen', '/kitchen/'], (_q, s) => sendHtml(s, 'kitchen'));
+app.get(['/somsachi', '/somsachi/'], (_q, s) => sendHtml(s, 'station'));
+app.get(['/salatchi', '/salatchi/'], (_q, s) => sendHtml(s, 'station'));
+app.get(['/oshpaz', '/oshpaz/'], (_q, s) => sendHtml(s, 'station'));
 app.get(['/admin', '/admin/'], (_q, s) => sendHtml(s, 'admin'));
 app.get(['/administrator', '/administrator/'], (_q, s) => sendHtml(s, 'administrator'));
 
