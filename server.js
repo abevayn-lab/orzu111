@@ -446,6 +446,8 @@ app.get('/api/cashier/data', cashier, (q, s) => {
   s.json({
     orders: O.list.filter(o => Number(o.time || 0) >= closedAt).sort((a, b) => Number(b.time || 0) - Number(a.time || 0)),
     waiters: CFG.waiters.map(({ id, name }) => ({ id, name, shift: O.waiterShifts?.[id] || { online: false, onlineAt: 0, offlineAt: 0, sessions: [] } })),
+    cats: CFG.cats,
+    menu: CFG.menu.filter(m => !m.hidden),
     settings: O.cashierSettings || { printerIp: '192.168.1.51' }
   });
 });
