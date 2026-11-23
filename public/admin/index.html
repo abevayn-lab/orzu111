@@ -241,7 +241,9 @@
         login();
         throw new Error('Parol noto‘g‘ri');
       }
-      return r.json();
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error || 'So‘rov bajarilmadi');
+      return data;
     }
 
     function login() {
@@ -556,16 +558,7 @@
       if (!src) return alert('QR rasmi hali tayyor emas');
       const w = window.open('', '_blank', 'width=500,height=650');
       if (!w) return alert('Chop etish oynasi bloklandi. Brauzerda pop-upga ruxsat bering.');
-      w.document.write('<!doctype html><html><head><title>ORZU stol QR</title><style>body{font-family:Arial;text-align:center;padding:30px}img{width:280px;height:280px}h1{font-size:26px}</style></head><body><h1>ORZU RESTORANI</h1><h2>STOL ' + String(table).replace(/[&<>"']/g, '') + '</h2><img src="' + src + '"><p>Menyuni ko‘rish va buyurtma berish uchun skanerlang</p><script>
-(function(){
-  const stopZoom = e => { if (e.cancelable) e.preventDefault(); };
-  document.addEventListener('gesturestart', stopZoom, {passive:false});
-  document.addEventListener('gesturechange', stopZoom, {passive:false});
-  document.addEventListener('gestureend', stopZoom, {passive:false});
-  document.addEventListener('dblclick', stopZoom, {passive:false});
-})();
-</script>
-</body></html>');
+      w.document.write('<!doctype html><html><head><title>ORZU stol QR</title><style>body{font-family:Arial;text-align:center;padding:30px}img{width:280px;height:280px}h1{font-size:26px}</style></head><body><h1>ORZU RESTORANI</h1><h2>STOL ' + String(table).replace(/[&<>"']/g, '') + '</h2><img src="' + src + '"><p>Menyuni ko‘rish va buyurtma berish uchun skanerlang</p></body></html>');
       w.document.close(); w.focus(); w.print();
     }
 
