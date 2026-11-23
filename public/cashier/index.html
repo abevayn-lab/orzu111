@@ -660,24 +660,33 @@
       } finally { busy = false; renderSaleCart(); }
     }
 
+    let ordersRefreshBusy = false;
     async function refreshOrders() {
-      if (!key) return;
-      if (!Array.isArray(DATA.menu) || !DATA.menu.length) return refresh();
-      const d = await api('/api/cashier/orders');
-      const cachedImages = new Map();
-      (DATA.orders || []).forEach(order => (order.items || []).forEach(item => {
-        if (item.img) cachedImages.set(String(order.id) + '|' + item.name, item.img);
-      }));
-      DATA.orders = (d.orders || []).map(order => ({
-        ...order,
-        items: (order.items || []).map(item => ({
-          ...item,
-          img: cachedImages.get(String(order.id) + '|' + item.name) ||
-            DATA.menu.find(menuItem => menuItem.name === item.name)?.img || ''
-        }))
-      }));
-      updateStats();
-      render();
+      if (!key || ordersRefreshBusy) return;
+      if (!Array.isArray(DATA.menu) || !DATA.menu.length) return;
+      ordersRefreshBusy = true;
+      try {
+        const d = await api('/api/cashier/orders');
+        const cachedImages = new Map();
+        (DATA.orders || []).forEach(order => (order.items || []).forEach(item => {
+          if (item.img) cachedImages.set(String(order.id) + '|' + item.name, item.img);
+        }));
+        const nextOrders = (d.orders || []).map(order => ({
+          ...order,
+          items: (order.items || []).map(item => ({
+            ...item,
+            img: cachedImages.get(String(order.id) + '|' + item.name) ||
+              DATA.menu.find(menuItem => menuItem.name === item.name)?.img || ''
+          }))
+        }));
+        // Ma'lumot o'zgarmagan bo'lsa, ekranni qayta chizmaymiz.
+        if (JSON.stringify(nextOrders) === JSON.stringify(DATA.orders || [])) return;
+        DATA.orders = nextOrders;
+        updateStats();
+        render();
+      } finally {
+        ordersRefreshBusy = false;
+      }
     }
 
     function updateStats() {
