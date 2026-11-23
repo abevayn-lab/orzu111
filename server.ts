@@ -43,6 +43,15 @@ function validTableQrToken(table: string, token: string) {
 const SU = (process.env.SUPABASE_URL || '').replace(/\/$/, '');
 const SK = process.env.SUPABASE_KEY;
 
+// Do not let a production deployment silently use development passwords or local storage.
+if (process.env.RAILWAY_ENVIRONMENT_NAME === 'production') {
+  const requiredSecrets = ['ADMIN_PASS', 'ADMINISTRATOR_PASS', 'CASHIER_PASS', 'ORZU_PRINT_KEY', 'SUPABASE_URL', 'SUPABASE_KEY'];
+  const missingSecrets = requiredSecrets.filter(name => !String(process.env[name] || '').trim());
+  if (missingSecrets.length) {
+    throw new Error('Missing required production environment variables: ' + missingSecrets.join(', '));
+  }
+}
+
 const DEFAULT_CATS = [
   '1-chi taom',
   '2-chi taom',
