@@ -2,7 +2,7 @@
 <html lang="uz">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1,user-scalable=no">
   <meta name="theme-color" content="#090807">
   <title>ORZU — Kassir</title>
   <link rel="stylesheet" href="/style.css">
@@ -301,6 +301,11 @@
       .floor-map { grid-template-columns:repeat(3,minmax(60px,1fr)); grid-auto-rows:72px; }
     }
 
+  
+    /* Native-app feel: prevent accidental double-tap/pinch zoom and rubber-band page drift. */
+    html { touch-action: pan-y manipulation; overscroll-behavior-y: none; -webkit-text-size-adjust: 100%; }
+    body { overscroll-behavior-y: none; }
+    button, a, input, select, textarea { touch-action: manipulation; }
   </style>
 
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -827,5 +832,14 @@
       if (key && !document.hidden) refresh().catch(() => {});
     }, 4500);
   </script>
+<script>
+(function(){
+  const stopZoom = e => { if (e.cancelable) e.preventDefault(); };
+  document.addEventListener('gesturestart', stopZoom, {passive:false});
+  document.addEventListener('gesturechange', stopZoom, {passive:false});
+  document.addEventListener('gestureend', stopZoom, {passive:false});
+  document.addEventListener('dblclick', stopZoom, {passive:false});
+})();
+</script>
 </body>
 </html>
