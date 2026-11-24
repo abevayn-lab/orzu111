@@ -214,23 +214,31 @@ app.post('/api/order', (q, s) => {
     return s.status(400).json({ error: "Savat bo'sh" });
   }
 
-  if (!CFG.waiters.length) {
-    return s.status(400).json({ error: "Ofitsiant yo'q" });
-  }
+  // "С собой" buyurtmalari bevosita kassir paneliga tushadi, ofitsiantga biriktirilmaydi.
+  const isTakeaway = ['с собой', 'собой', 'saboy', 'takeaway'].includes(table.toLowerCase());
+  let wid = null;
+  let waiterName = 'С собой';
 
-  // Yangi mijoz zakazlari faqat ONLAYN ofitsiantlarga navbat bilan beriladi.
-  const activeWaiters = CFG.waiters.filter(w => w && w.id != null && String(w.name || '').trim() && O.waiterShifts?.[w.id]?.online === true);
-  if (!activeWaiters.length) return s.status(503).json({ error: 'Hozir onlayn ofitsiant yo‘q. Iltimos, birozdan keyin urinib ko‘ring.' });
-  const waiterIndex = O.nextWaiterIndex % activeWaiters.length;
-  const w = activeWaiters[waiterIndex];
-  const wid = w.id;
-  O.nextWaiterIndex = (waiterIndex + 1) % activeWaiters.length;
+  if (!isTakeaway) {
+    if (!CFG.waiters.length) {
+      return s.status(400).json({ error: "Ofitsiant yo'q" });
+    }
+
+    // Oddiy stol buyurtmalari faqat ONLAYN ofitsiantlarga navbat bilan beriladi.
+    const activeWaiters = CFG.waiters.filter(w => w && w.id != null && String(w.name || '').trim() && O.waiterShifts?.[w.id]?.online === true);
+    if (!activeWaiters.length) return s.status(503).json({ error: 'Hozir onlayn ofitsiant yo‘q. Iltimos, birozdan keyin urinib ko‘ring.' });
+    const waiterIndex = O.nextWaiterIndex % activeWaiters.length;
+    const w = activeWaiters[waiterIndex];
+    wid = w.id;
+    waiterName = w.name;
+    O.nextWaiterIndex = (waiterIndex + 1) % activeWaiters.length;
+  }
 
   const o = {
     id: ++O.seq,
     table,
     waiter: wid,
-    waiterName: w.name,
+    waiterName,
     items,
     total: items.reduce((a, i) => a + i.price * i.qty, 0),
     status: 'new',
