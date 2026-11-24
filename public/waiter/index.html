@@ -384,6 +384,19 @@
     document.addEventListener('pointerdown', unlockSound, { once: false });
     document.addEventListener('keydown', unlockSound, { once: false });
 
+    function notifyNewOrder(order) {
+      if (!('Notification' in window) || Notification.permission !== 'granted') return;
+      try {
+        const n = new Notification('ORZU — yangi buyurtma!', {
+          body: 'Stol ' + order.table + ' · Buyurtma #' + order.id + ' · ' + (order.items || []).length + ' xil taom',
+          tag: 'orzu-waiter-order-' + order.id + '-' + order.time,
+          renotify: true,
+          icon: '/waiter-icon.svg'
+        });
+        n.onclick = () => { window.focus(); n.close(); };
+      } catch (e) { console.warn('Bildirishnoma ko‘rsatilmadi:', e); }
+    }
+
     function toast(m, bad) {
       const t = document.createElement('div');
       t.textContent = m;
@@ -415,6 +428,9 @@
 
     async function go() {
       unlockSound();
+      if ('Notification' in window && Notification.permission === 'default') {
+        try { await Notification.requestPermission(); } catch (e) {}
+      }
       const ws = document.getElementById('ws');
       const pin = document.getElementById('pin');
       if (!ws || !pin) return;
@@ -455,7 +471,7 @@
         SHIFT = nextShift;
 
         const fresh = O.filter(o => o.status === 'new' && !firstOrdersLoad && !knownNewIds.has(String(o.id) + ':' + String(o.time)));
-        fresh.forEach(beep);
+        fresh.forEach(order => { beep(); notifyNewOrder(order); });
         // The same order ID can receive another QR order; its updated time is a new alert event.
         knownNewIds = new Set(O.filter(o => o.status === 'new').map(o => String(o.id) + ':' + String(o.time)));
         firstOrdersLoad = false;
