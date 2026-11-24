@@ -291,8 +291,8 @@
       }
       g.innerHTML = items.map((m, i) => `
         <div class="card" style="animation-delay:${i * 0.05}s">
-          <div class="im">
-            <img src="${m.img || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&auto=format&fit=crop&q=80'}" alt="${m.name}" onerror="this.src='https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&auto=format&fit=crop&q=80'">
+          <div class="im" style="${m.img ? '' : 'background:#24211d'}">
+            ${m.img ? `<img src="${m.img}" alt="${m.name}" onerror="this.style.display='none'">` : ''}
           </div>
           <div class="p">
             <h3>${m.name}</h3>
