@@ -396,7 +396,7 @@
           <label for="mifile" style="display:block;margin-top:12px;font-size:13px;color:#d8c29d">Taom rasmi (telefon galereyasidan tanlang):</label>
           <input id="mifile" type="file" accept="image/*" onchange="previewMenuImage(this)" style="width:100%;padding:10px;background:#242424;color:#fff;border:1px solid #806b48;border-radius:8px">
           <div style="display:flex;align-items:center;gap:12px;margin-top:8px">
-            <img id="mipreview" src="${edit && edit.img ? edit.img : ''}" alt="Tanlangan taom rasmi" style="width:88px;height:72px;object-fit:cover;border-radius:8px;border:1px solid #806b48;${edit && edit.img ? '' : 'display:none'}">
+            <img id="mipreview" src="${edit && typeof edit.img === 'string' && edit.img.startsWith('data:image/') ? edit.img : ''}" alt="Tanlangan taom rasmi" style="width:88px;height:72px;object-fit:cover;border-radius:8px;border:1px solid #806b48;${edit && typeof edit.img === 'string' && edit.img.startsWith('data:image/') ? '' : 'display:none'}">
             <small style="color:#aaa">Rasm tanlang yoki avvalgi rasmni o‘zgarishsiz qoldiring.</small>
           </div>
           <div style="display:flex;gap:10px;margin-top:10px">
@@ -409,7 +409,7 @@
           ${tbl(
             ['Rasm', 'Nomi', 'Narx', 'Bo‘lim', 'Amallar'],
             D.menu.map(m => [
-              m.img
+              typeof m.img === 'string' && m.img.startsWith('data:image/')
                 ? `<img class="thumb" src="${m.img}" alt="${m.name}">`
                 : '<div class="thumb" style="display:flex;align-items:center;justify-content:center;background:#242424;color:#999;font-size:10px;text-align:center">Rasm yo‘q</div>',
               m.name,
@@ -470,7 +470,7 @@
       if (saveButton) { saveButton.disabled = true; saveButton.textContent = 'Saqlanmoqda...'; }
       try {
         const selectedFile = document.getElementById('mifile').files[0];
-        const img = selectedFile ? await compressMenuImage(selectedFile) : (edit && edit.img ? edit.img : '');
+        const img = selectedFile ? await compressMenuImage(selectedFile) : (edit && typeof edit.img === 'string' && edit.img.startsWith('data:image/') ? edit.img : '');
         await api('/api/admin/menu', 'POST', {
           id: edit && edit.id,
           name,
