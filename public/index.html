@@ -285,7 +285,7 @@
 
     function show() {
       const items = M.filter(m => m.cat === cat);
-      const hasUserPhoto = m => typeof m.img === 'string' && m.img.startsWith('data:image/');
+      const hasUserPhoto = m => !QR_LOCKED && typeof m.img === 'string' && m.img.startsWith('data:image/');
       if (!items.length) {
         g.innerHTML = '<p style="text-align:center;color:#b9a875;padding:30px 10px;grid-column:1/-1">Bu bo‘limda hozircha taom yo‘q</p>';
         return;
