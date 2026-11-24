@@ -217,9 +217,11 @@
 
   <script>
     const params = new URLSearchParams(location.search);
-    let T = params.get('table') || '1';
     const QR = params.get('qr') || '';
     const HAS_TABLE_PARAM = params.has('table');
+    const rawTable = (params.get('table') || '1').trim();
+    const IS_TAKEAWAY = ['с собой', 'собой', 'saboy', 'takeaway'].includes(rawTable.toLocaleLowerCase('ru-RU'));
+    let T = IS_TAKEAWAY ? 'С собой' : rawTable;
     let QR_LOCKED = false;
     let M = [], C = [], cat = 0, cart = {};
     let sendingOrder = false;
@@ -357,10 +359,10 @@
           <b>Jami summa:</b>
           <b class="gold" style="font-size:19px">${f(sum())}</b>
         </div>
-        <label style="display:block;margin-top:14px;color:#e9d5a7;font-size:13px">${QR_LOCKED ? 'Sizning stolingiz:' : 'Stol raqamini tanlang yoki kiriting:'}</label>
+        <label style="display:block;margin-top:14px;color:#e9d5a7;font-size:13px">${IS_TAKEAWAY ? 'Buyurtma turi:' : (QR_LOCKED ? 'Sizning stolingiz:' : 'Stol raqamini tanlang yoki kiriting:')}</label>
         <div class="table-pills">${pills}</div>
         <input id="tn" type="text" placeholder="Stol raqami (masalan: 1, 5, VIP-2)" value="${T}" ${QR_LOCKED ? 'readonly' : 'onchange="T=this.value.trim()"'}>
-        <button class="btn" style="width:100%;margin-top:10px" onclick="send()">Ofitsiantga yuborish</button>
+        <button class="btn" style="width:100%;margin-top:10px" onclick="send()">${IS_TAKEAWAY ? 'Kassaga yuborish' : 'Ofitsiantga yuborish'}</button>
       `;
       md.classList.add('on');
     }
@@ -393,7 +395,7 @@
           <div class="ok">
             <i>✨</i>
             <h2 class="gold">Rahmat!</h2>
-            <p style="margin-top:10px;line-height:1.6">Buyurtma <b>#${r.id}</b> qabul qilindi.<br>Stol: <b>${t}</b><br>Ofitsiant tez orada xizmat ko‘rsatadi.</p>
+            <p style="margin-top:10px;line-height:1.6">Buyurtma <b>#${r.id}</b> qabul qilindi.<br>${IS_TAKEAWAY ? 'Buyurtma turi:' : 'Stol:'} <b>${t}</b><br>${IS_TAKEAWAY ? 'Buyurtmangiz kassaga yuborildi.' : 'Ofitsiant tez orada xizmat ko‘rsatadi.'}</p>
             <button class="btn" style="margin-top:20px;width:100%" onclick="closeModal();ch(0,0);show()">Menyuga qaytish</button>
           </div>
         `;
