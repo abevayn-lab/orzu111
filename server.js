@@ -429,6 +429,42 @@ app.post('/api/cashier/order', cashier, async (q, s) => {
   s.json({ ok: true, order });
 });
 
+// CASHIER: fetch latest orders for live refresh.
+app.get('/api/cashier/orders', cashier, (q, s) => {
+  const closedAt = Number(O.dayClosures.cashier || 0);
+  s.set('Cache-Control', 'no-store');
+  s.json({ orders: O.list.filter(o => Number(o.time || 0) >= closedAt).sort((a, b) => Number(b.time || 0) - Number(a.time || 0)) });
+});
+
+// CASHIER: create a table order and assign it to the selected waiter.
+app.post('/api/cashier/create-order', cashier, async (q, s) => {
+  const table = String(q.body.table || '').trim();
+  const waiter = CFG.waiters.find(w => String(w.id) === String(q.body.waiterId));
+  if (!table) return s.status(400).json({ error: 'Stol tanlanmagan' });
+  if (!waiter) return s.status(400).json({ error: 'Ofitsiantni tanlang' });
+  if (O.waiterShifts?.[waiter.id]?.online !== true) return s.status(409).json({ error: 'Tanlangan ofitsiant hozir Onlayn emas. Boshqa ofitsiantni tanlang.' });
+  const items = [];
+  for (const selected of q.body.items || []) {
+    const m = CFG.menu.find(x => String(x.id) === String(selected.menuId) && !x.hidden);
+    const qty = Math.min(99, Math.max(0, Number(selected.qty) | 0));
+    if (m && qty > 0) items.push({ name: m.name, price: Number(m.price || 0), img: m.img || '', qty });
+  }
+  if (!items.length) return s.status(400).json({ error: 'Kamida bitta mahsulot tanlang' });
+  const order = {
+    id: ++O.seq, table, waiter: waiter.id, waiterName: waiter.name, items,
+    total: items.reduce((sum, item) => sum + item.price * item.qty, 0),
+    status: 'new', time: Date.now()
+  };
+  O.list.push(order);
+  try { await save('orders'); }
+  catch (e) {
+    O.list = O.list.filter(x => x.id !== order.id);
+    O.seq = Math.max(0, O.seq - 1);
+    return s.status(500).json({ error: 'Buyurtma saqlanmadi: ' + e.message });
+  }
+  s.json({ ok: true, order });
+});
+
 // CASHIER: queue a receipt for the local printer bridge.
 app.post('/api/cashier/print', cashier, async (q, s) => {
   const order = O.list.find(x => String(x.id) === String(q.body.orderId));
