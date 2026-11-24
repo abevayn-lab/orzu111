@@ -670,7 +670,7 @@
       `).join('') : 'Hozircha mahsulot tanlanmagan';
       $('saleTotal').textContent = money(total);
       $('saleSubmit').disabled = count === 0 || busy;
-      $('saleSubmit').textContent = count ? `✓ To‘lash va chek chiqarish (${count} ta)` : '✓ To‘lash va chek chiqarish';
+      $('saleSubmit').textContent = count ? `✓ Savdoni yakunlash (${count} ta)` : '✓ Savdoni yakunlash';
     }
 
     function clearSale() { saleCart = {}; renderSale(); }
@@ -689,8 +689,7 @@
         });
         saleCart = {};
         await refresh();
-        await printTicket(Number(result.order.id));
-        alert('Savdo saqlandi. Chek printer navbatiga yuborildi!');
+        alert('Savdo saqlandi va hisob yopildi. Chek avtomatik chiqarilmadi.');
       } catch (e) {
         alert('Savdoni saqlash yoki chek chiqarishda xato: ' + e.message);
       } finally { busy = false; renderSaleCart(); }
@@ -896,10 +895,10 @@
             </div>
             <div class="actions">
               ${o.status === 'paid' ? `
-                <button class="btn dark" onclick="reprint(${Number(o.id)})">🖨 Chekni qayta chiqarish</button>
+                <button class="btn dark" onclick="reprint(${Number(o.id)})">🖨 Chek chiqarish</button>
               ` : `
-                <button class="btn" onclick="markPaid(${Number(o.id)})">✓ To‘landi & Chek chiqarish</button>
-                <button class="btn dark" onclick="reprint(${Number(o.id)})">Oldindan hisob cheki</button>
+                <button class="btn" onclick="markPaid(${Number(o.id)})">✓ Oplatit / Hisobni yopish</button>
+                <button class="btn dark" onclick="reprint(${Number(o.id)})">🖨 Chek oldindan olish</button>
                 <button class="btn dark" onclick="openEdit(${Number(o.id)})">✏️ Mahsulot qo‘shish / ayirish</button>
               `}
             </div>
@@ -1035,8 +1034,7 @@
         DATA.orders = DATA.orders.map(x => Number(x.id) === id ? d.order : x);
         updateStats();
         render();
-        await printTicket(id);
-        alert('To‘lov saqlandi va chek printer navbatiga yuborildi!');
+        alert('To‘lov qabul qilindi, hisob yopildi. Chek avtomatik chiqarilmadi.');
       } catch (e) {
         alert(e.message);
       } finally {
