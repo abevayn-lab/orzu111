@@ -285,14 +285,15 @@
 
     function show() {
       const items = M.filter(m => m.cat === cat);
+      const hasUserPhoto = m => typeof m.img === 'string' && m.img.startsWith('data:image/');
       if (!items.length) {
         g.innerHTML = '<p style="text-align:center;color:#b9a875;padding:30px 10px;grid-column:1/-1">Bu bo‘limda hozircha taom yo‘q</p>';
         return;
       }
       g.innerHTML = items.map((m, i) => `
         <div class="card" style="animation-delay:${i * 0.05}s">
-          <div class="im" style="${m.img ? '' : 'background:#24211d'}">
-            ${m.img ? `<img src="${m.img}" alt="${m.name}" onerror="this.style.display='none'">` : ''}
+          <div class="im" style="${hasUserPhoto(m) ? '' : 'background:#24211d'}">
+            ${hasUserPhoto(m) ? `<img src="${m.img}" alt="${m.name}" onerror="this.style.display='none'">` : ''}
           </div>
           <div class="p">
             <h3>${m.name}</h3>
