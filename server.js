@@ -215,7 +215,7 @@ app.post('/api/order', (q, s) => {
   }
 
   // "С собой" buyurtmalari bevosita kassir paneliga tushadi, ofitsiantga biriktirilmaydi.
-  const isTakeaway = ['с собой', 'собой', 'saboy', 'takeaway'].includes(table.toLowerCase());
+  const isTakeaway = ['с собой', 'собой', 'saboy', 'soboy', 'takeaway'].includes(table.toLowerCase());
   let wid = null;
   let waiterName = 'С собой';
 
