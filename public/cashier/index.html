@@ -523,6 +523,8 @@
             <div><h3 style="margin:0;color:var(--g2)">＋ Zakaz menyusi</h3><p id="newOrderInfo" style="margin:5px 0 0;color:#d8c29d"></p></div>
             <button class="btn dark" onclick="closeNewOrder()">✕ Yopish</button>
           </div>
+          <label for="newOrderWaiter" style="display:block;color:#ffe39a;margin:8px 0 5px;font-size:13px;font-weight:700">Mas’ul ofitsiantni tanlang:</label>
+          <select id="newOrderWaiter" style="width:100%;padding:10px;border:1px solid #8a642c;border-radius:9px;background:#100c09;color:#fff;margin-bottom:8px"></select>
           <div id="newOrderCategories" class="sale-cats"></div>
           <div id="newOrderProducts" class="sale-products"></div>
           <div class="sale-cart">
@@ -560,6 +562,7 @@
     let newOrderItems = [];
     let newOrderCat = 0;
     let selectedTable = '1';
+    let selectedOrderWaiter = '';
     const FLOOR_TABLES = ['1','2','3','4','5','6','7','8','9','10','K-1','K-2','K-3','K-4','Banket','Soboy'];
 
     const $ = id => document.getElementById(id);
@@ -807,7 +810,14 @@
       if (tab === 'paid') return alert('To‘langanlar bo‘limida yangi buyurtma ochib bo‘lmaydi.');
       newOrderItems = [];
       newOrderCat = 0;
-      $('newOrderInfo').textContent = 'Stol: ' + selectedTable + ' · Bo‘limni tanlang va mahsulotlarni + / − bilan qo‘shing';
+      const availableWaiters = (DATA.waiters || []).filter(w => w && w.shift && w.shift.online);
+      if (!availableWaiters.length) return alert('Hozir onlayn ofitsiant yo‘q. Avval ofitsiantni kassadan Onlayn qiling.');
+      selectedOrderWaiter = String(availableWaiters[0].id);
+      $('newOrderInfo').textContent = 'Stol: ' + selectedTable + ' · Ofitsiantni tanlang, so‘ng mahsulotlarni qo‘shing';
+      const waiterSelect = $('newOrderWaiter');
+      waiterSelect.innerHTML = availableWaiters.map(w => '<option value="' + esc(w.id) + '">' + esc(w.name) + '</option>').join('');
+      waiterSelect.value = selectedOrderWaiter;
+      waiterSelect.onchange = () => { selectedOrderWaiter = waiterSelect.value; };
       renderNewOrderMenu();
       $('newOrderModal').classList.remove('hidden');
     }
@@ -858,7 +868,9 @@
 
     async function saveNewOrder(){
       if(busy||!newOrderItems.length)return alert('Kamida bitta mahsulot tanlang.');
-      busy=true;try{const d=await api('/api/cashier/create-order','POST',{table:selectedTable,items:newOrderItems});
+      const waiterId = $('newOrderWaiter')?.value || selectedOrderWaiter;
+      if (!waiterId) return alert('Buyurtma uchun ofitsiantni tanlang.');
+      busy=true;try{const d=await api('/api/cashier/create-order','POST',{table:selectedTable,waiterId,items:newOrderItems});
         DATA.orders.unshift(d.order);updateStats();render();closeNewOrder();alert('Buyurtma saqlandi: '+money(d.order.total));
       }catch(e){alert('Saqlashda xato: '+e.message)}finally{busy=false;}
     }
