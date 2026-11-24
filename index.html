@@ -253,7 +253,7 @@
     const IS_TAKEAWAY_QR = ['с собой', 'собой', 'saboy', 'takeaway'].includes(NORMALIZED_QR_TABLE);
     const TABLE_LOCKED = QR_TABLE_PARAM !== null && (IS_TAKEAWAY_QR || /^[A-Za-z0-9_-]{1,20}$/.test(QR_TABLE_PARAM.trim()));
     let QR_INVALID = false;
-    let T = IS_TAKEAWAY_QR ? 'С собой' : (TABLE_LOCKED ? QR_TABLE_PARAM.trim() : '1');
+    let T = IS_TAKEAWAY_QR ? 'Soboy' : (TABLE_LOCKED ? QR_TABLE_PARAM.trim() : '1');
     let M = [], C = [], cat = 0, cart = {};
     const f = n => Number(n || 0).toLocaleString('uz-UZ') + " so'm";
     const esc = v => String(v ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
@@ -367,7 +367,7 @@
         </div>
         <label style="display:block;margin-top:14px;color:#e9d5a7;font-size:13px">${IS_TAKEAWAY_QR ? 'Buyurtma turi:' : (TABLE_LOCKED ? 'QR-kod orqali belgilangan stol:' : 'Stol raqamini tanlang yoki kiriting:')}</label>
         ${TABLE_LOCKED ? '' : `<div class="table-pills">${pills}</div>`}
-        <input id="tn" type="text" placeholder="${IS_TAKEAWAY_QR ? 'Buyurtma turi' : 'Stol raqami (masalan: 1, 5, VIP-2)'}" value="${T}" ${TABLE_LOCKED ? 'readonly aria-readonly="true"' : 'onchange="T=this.value.trim()"'}>
+        <input id="tn" type="text" placeholder="${IS_TAKEAWAY_QR ? 'Buyurtma turi' : 'Stol raqami (masalan: 1, 5, VIP-2)'}" value="${IS_TAKEAWAY_QR ? 'С собой' : T}" ${TABLE_LOCKED ? 'readonly aria-readonly="true"' : 'onchange="T=this.value.trim()"'}>
         <button class="btn" style="width:100%;margin-top:10px" onclick="send()">${IS_TAKEAWAY_QR ? 'Kassaga yuborish' : 'Ofitsiantga yuborish'}</button>
       `;
       md.classList.add('on');
@@ -398,7 +398,7 @@
           <div class="ok">
             <i>✨</i>
             <h2 class="gold">Rahmat!</h2>
-            <p style="margin-top:10px;line-height:1.6">Buyurtma <b>#${r.id}</b> qabul qilindi.<br>${IS_TAKEAWAY_QR ? 'Buyurtma turi:' : 'Stol:'} <b>${t}</b><br>${IS_TAKEAWAY_QR ? 'Buyurtmangiz kassaga yuborildi.' : 'Ofitsiant tez orada xizmat ko‘rsatadi.'}</p>
+            <p style="margin-top:10px;line-height:1.6">Buyurtma <b>#${r.id}</b> qabul qilindi.<br>${IS_TAKEAWAY_QR ? 'Buyurtma turi:' : 'Stol:'} <b>${IS_TAKEAWAY_QR ? 'С собой' : t}</b><br>${IS_TAKEAWAY_QR ? 'Buyurtmangiz kassaga yuborildi.' : 'Ofitsiant tez orada xizmat ko‘rsatadi.'}</p>
             <button class="btn" style="margin-top:20px;width:100%" onclick="closeModal();ch(0,0);show()">Menyuga qaytish</button>
           </div>
         `;
