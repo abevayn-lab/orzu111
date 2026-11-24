@@ -220,7 +220,7 @@
     const QR = params.get('qr') || '';
     const HAS_TABLE_PARAM = params.has('table');
     const rawTable = (params.get('table') || '1').trim();
-    const IS_TAKEAWAY = ['с собой', 'собой', 'saboy', 'takeaway'].includes(rawTable.toLocaleLowerCase('ru-RU'));
+    let IS_TAKEAWAY = ['с собой', 'собой', 'saboy', 'takeaway'].includes(rawTable.toLocaleLowerCase('ru-RU'));
     let T = IS_TAKEAWAY ? 'С собой' : rawTable;
     let QR_LOCKED = false;
     let M = [], C = [], cat = 0, cart = {};
@@ -324,11 +324,17 @@
 
     function pickTable(num) {
       T = String(num);
+      IS_TAKEAWAY = ['с собой', 'собой', 'saboy', 'takeaway'].includes(T.toLocaleLowerCase('ru-RU'));
       const tn = document.getElementById('tn');
       if (tn) tn.value = T;
       document.querySelectorAll('.table-pill').forEach(btn => {
         btn.classList.toggle('active', btn.getAttribute('data-t') === T);
       });
+      const label = document.querySelector('#sh label');
+      if (label) label.textContent = IS_TAKEAWAY ? 'Buyurtma turi:' : 'Stol raqamini tanlang yoki kiriting:';
+      const sendButton = document.querySelector('#sh .btn');
+      if (sendButton) sendButton.textContent = IS_TAKEAWAY ? 'Kassaga yuborish' : 'Ofitsiantga yuborish';
+      if (tn) tn.placeholder = IS_TAKEAWAY ? 'Buyurtma turi' : 'Stol raqami (masalan: 1, 5, VIP-2)';
     }
 
     function closeModal() {
@@ -340,7 +346,7 @@
       if (!L.length) return;
       const pills = QR_LOCKED ? '' : [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(n =>
         `<button type="button" class="table-pill ${String(n) === String(T) ? 'active' : ''}" data-t="${n}" onclick="pickTable(${n})">Stol ${n}</button>`
-      ).join('');
+      ).join('') + `<button type="button" class="table-pill ${IS_TAKEAWAY ? 'active' : ''}" data-t="С собой" onclick="pickTable('С собой')">С собой</button>`;
 
       sh.innerHTML = `
         <div style="display:flex;justify-content:space-between;align-items:center">
