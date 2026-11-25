@@ -655,7 +655,12 @@
             <button style="background:none;border:0;color:#ffe39a;font-size:22px;cursor:pointer" onclick="closeAdd()">✕</button>
           </div>
           ${TGT ? '' : `
-            <label style="display:block;color:#ffe39a;margin:14px 0 4px">Stol raqami:</label>
+            <label style="display:block;color:#ffe39a;margin:14px 0 4px">Buyurtma joyi:</label>
+            <select class="input" id="placeType" onchange="updatePlaceLabel()" style="margin-bottom:8px">
+              <option value="Stol">Stol</option>
+              <option value="Kabina">Kabina</option>
+            </select>
+            <label id="placeNumberLabel" style="display:block;color:#ffe39a;margin:4px 0">Stol raqami:</label>
             <input class="input" id="tbl" type="text" placeholder="Masalan: 5" value="1">
           `}
           <div id="pl" style="margin-top:14px"><p class="muted">Menyu yuklanmoqda...</p></div>
@@ -715,6 +720,14 @@
       if (pk) pk.remove();
     }
 
+    function updatePlaceLabel() {
+      const type = document.getElementById('placeType')?.value || 'Stol';
+      const label = document.getElementById('placeNumberLabel');
+      const input = document.getElementById('tbl');
+      if (label) label.textContent = type === 'Kabina' ? 'Kabina raqami yoki nomi:' : 'Stol raqami:';
+      if (input) input.placeholder = type === 'Kabina' ? 'Masalan: 1 yoki VIP' : 'Masalan: 5';
+    }
+
     async function sendAdd() {
       const items = Object.entries(SEL)
         .filter(([_, q]) => q > 0)
@@ -723,8 +736,10 @@
       if (!items.length) return alert('Kamida bitta taom tanlang!');
 
       const tblInput = document.getElementById('tbl');
-      const table = tblInput ? tblInput.value.trim() : '';
-      if (!TGT && !table) return alert('Stol raqamini kiriting!');
+      const placeType = document.getElementById('placeType')?.value || 'Stol';
+      const placeValue = tblInput ? tblInput.value.trim() : '';
+      const table = TGT ? '' : (placeType + ' ' + placeValue).trim();
+      if (!TGT && !placeValue) return alert(placeType === 'Kabina' ? 'Kabina raqami yoki nomini kiriting!' : 'Stol raqamini kiriting!');
 
       try {
         const res = await fetch('/api/waiter/add', {
