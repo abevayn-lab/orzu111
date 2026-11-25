@@ -661,7 +661,7 @@
               <option value="Kabina">Kabina</option>
             </select>
             <label id="placeNumberLabel" style="display:block;color:#ffe39a;margin:4px 0">Stol raqami:</label>
-            <input class="input" id="tbl" type="text" placeholder="Masalan: 5" value="1">
+            <div id="placeNumberWrap"><input class="input" id="tbl" type="number" min="1" max="10" placeholder="Masalan: 5" value="1"></div>
           `}
           <div id="pl" style="margin-top:14px"><p class="muted">Menyu yuklanmoqda...</p></div>
           <div class="actions" style="margin-top:20px">
@@ -723,9 +723,15 @@
     function updatePlaceLabel() {
       const type = document.getElementById('placeType')?.value || 'Stol';
       const label = document.getElementById('placeNumberLabel');
-      const input = document.getElementById('tbl');
-      if (label) label.textContent = type === 'Kabina' ? 'Kabina raqami yoki nomi:' : 'Stol raqami:';
-      if (input) input.placeholder = type === 'Kabina' ? 'Masalan: 1 yoki VIP' : 'Masalan: 5';
+      const wrap = document.getElementById('placeNumberWrap');
+      if (label) label.textContent = type === 'Kabina' ? 'Kabina tanlang:' : 'Stol raqami:';
+      if (wrap) {
+        if (type === 'Kabina') {
+          wrap.innerHTML = '<select class="input" id="tbl"><option value="K-1">Kabina 1</option><option value="K-2">Kabina 2</option><option value="K-3">Kabina 3</option><option value="K-4">Kabina 4</option></select>';
+        } else {
+          wrap.innerHTML = '<input class="input" id="tbl" type="number" min="1" max="10" placeholder="Masalan: 5" value="1">';
+        }
+      }
     }
 
     async function sendAdd() {
@@ -738,8 +744,8 @@
       const tblInput = document.getElementById('tbl');
       const placeType = document.getElementById('placeType')?.value || 'Stol';
       const placeValue = tblInput ? tblInput.value.trim() : '';
-      const table = TGT ? '' : (placeType + ' ' + placeValue).trim();
-      if (!TGT && !placeValue) return alert(placeType === 'Kabina' ? 'Kabina raqami yoki nomini kiriting!' : 'Stol raqamini kiriting!');
+      const table = TGT ? '' : placeValue;
+      if (!TGT && !placeValue) return alert(placeType === 'Kabina' ? 'Kabina tanlang!' : 'Stol raqamini kiriting!');
 
       try {
         const res = await fetch('/api/waiter/add', {
