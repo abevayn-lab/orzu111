@@ -622,6 +622,16 @@
       $('login').classList.remove('hidden');
     }
 
+    function updateStats() {
+      const orders = Array.isArray(DATA.orders) ? DATA.orders : [];
+      const pending = orders.filter(order => order.status !== 'paid').length;
+      const paidOrders = orders.filter(order => order.status === 'paid');
+      const paidSum = paidOrders.reduce((sum, order) => sum + Number(order.total || 0), 0);
+      if ($('pendingCount')) $('pendingCount').textContent = pending + ' ta';
+      if ($('paidCount')) $('paidCount').textContent = paidOrders.length + ' ta';
+      if ($('paidSum')) $('paidSum').textContent = money(paidSum);
+    }
+
     async function refresh() {
       if (!key) return;
       DATA = await api('/api/cashier/data');
