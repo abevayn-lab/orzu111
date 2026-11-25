@@ -40,9 +40,10 @@ function makeReceipt(o) {
   const qtyOf = it => Math.max(0, Number(it.qty) || 0);
   const priceOf = it => Math.max(0, Number(it.price) || 0);
   const subtotal = items.reduce((sum, it) => sum + qtyOf(it) * priceOf(it), 0);
-  // 5% service charge, rounded to the nearest 1,000 so the printed
-  // amounts match the supplied sample (43,000 -> 2,000).
-  const service = Math.round(subtotal * 0.05);
+  // Takeaway ("Saboy") orders are exempt from the 5% service charge.
+  const tableName = String(o.table ?? o.tableNumber ?? '').trim().toLowerCase();
+  const isTakeaway = ['с собой', 'собой', 'saboy', 'soboy', 'takeaway'].includes(tableName);
+  const service = isTakeaway ? 0 : Math.round(subtotal * 0.05);
   const grandTotal = subtotal + service;
 
   const pad = (s, n) => esc(s).slice(0, n).padEnd(n, ' ');
@@ -93,7 +94,7 @@ function makeReceipt(o) {
   out.push(
     line(rule),
     line(pad('Jami:', 30) + right(amount(subtotal), 12)),
-    line(pad('Xizmat 5%:', 30) + right(amount(service), 12)),
+    ...(isTakeaway ? [] : [line(pad('Xizmat 5%:', 30) + right(amount(service), 12))]),
     line(rule),
     Buffer.from([0x1b, 0x45, 0x01]),
     Buffer.from([0x1d, 0x21, 0x11]),
