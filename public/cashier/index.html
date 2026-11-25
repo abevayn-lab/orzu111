@@ -809,6 +809,17 @@
 
     function openNewOrder() {
       if (tab === 'paid') return alert('To‘langanlar bo‘limida yangi buyurtma ochib bo‘lmaydi.');
+
+      // Tanlangan stolda faol zakaz bo‘lsa, ikkinchi zakaz ochmaymiz:
+      // mavjud zakazni tahrirlash oynasi orqali mahsulot qo‘shamiz.
+      const existingOrder = DATA.orders
+        .filter(o => String(o.table || '').trim() === String(selectedTable).trim() && o.status !== 'paid')
+        .sort((a, b) => Number(b.time || 0) - Number(a.time || 0))[0];
+      if (existingOrder) {
+        openEdit(Number(existingOrder.id));
+        return;
+      }
+
       newOrderItems = [];
       newOrderCat = 0;
       const availableWaiters = (DATA.waiters || []).filter(w => w && w.shift && w.shift.online);
