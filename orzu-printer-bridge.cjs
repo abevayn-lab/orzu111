@@ -98,15 +98,13 @@ function makeReceipt(o) {
     line(rule),
     Buffer.from([0x1b, 0x45, 0x01]),
     Buffer.from([0x1d, 0x21, 0x11]),
-    // Double-width printing fits 21 characters across an 80 mm receipt.
-    // Keep the label short and the total right-aligned to prevent wrapping.
     line(pad('JAMI:', 6) + right(amount(grandTotal), 15)),
     Buffer.from([0x1d, 0x21, 0x00]),
     Buffer.from([0x1b, 0x45, 0x00]),
     line(rule),
     Buffer.from([0x1b, 0x61, 0x01]),
     line('TASHRIFINGIZ UCHUN RAHMAT!'),
-    line('INSTAGRAM sahifamizga obuna'),
+    line('INSTAGRAM SAHIFAMIZGA OBUNA BOLING!'),
     line('@orzu_arnasoy'),
     line(''),
     Buffer.from([0x1d, 0x56, 0x42, 0x00])
