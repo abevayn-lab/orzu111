@@ -539,7 +539,7 @@
         <div class="edit-panel">
           <div style="display:flex;justify-content:space-between;align-items:center;gap:12px"><h3 style="color:var(--g2);margin:0">Buyurtmani tahrirlash</h3><button class="btn dark" onclick="closeEdit()">✕ Yopish</button></div>
           <p id="editOrderInfo" style="color:#d8c29d;font-size:13px;margin:8px 0 12px"></p><div id="editItems"></div>
-          <div style="border-top:1px dashed #755326;margin-top:14px;padding-top:12px"><b style="color:var(--g2)">Yangi mahsulot qo‘shish</b><div class="edit-add"><select id="editMenuSelect"></select><input id="editAddQty" type="number" min="1" max="99" value="1" aria-label="Miqdor"><button class="btn" onclick="addEditItem()">＋ Qo‘shish</button></div></div>
+          <div style="border-top:1px dashed #755326;margin-top:14px;padding-top:12px"><b style="color:var(--g2);display:block;margin-bottom:10px">＋ Menyudan mahsulot qo‘shish</b><div id="editMenuCategories" class="sale-cats"></div><div id="editMenuProducts" class="sale-products"></div></div>
           <div class="total" style="margin-top:16px"><span>Yangi JAMI:</span><span id="editTotal">0 so‘m</span></div>
           <div style="display:flex;gap:8px;margin-top:12px"><button class="btn" style="flex:1" onclick="saveEditOrder()">O‘zgarishlarni saqlash</button><button class="btn dark" onclick="closeEdit()">Bekor qilish</button></div>
         </div>
@@ -559,6 +559,7 @@
     let tab = 'pending';
     let busy = false;
     let editState = null;
+    let editMenuCat = 0;
     let newOrderItems = [];
     let newOrderCat = 0;
     let selectedTable = '1';
@@ -929,8 +930,8 @@
       if (!order || order.status === 'paid') return alert('Faqat to‘lanmagan buyurtmani tahrirlash mumkin.');
       editState = { orderId:Number(orderId), originalItems:(order.items || []).map(item => ({...item, qty:Number(item.qty || 0)})), additions:[] };
       $('editOrderInfo').textContent = 'Buyurtma #' + order.id + ' · Stol ' + order.table + ' · ' + (order.waiterName || '—');
-      $('editMenuSelect').innerHTML = DATA.menu.map(m => '<option value="' + Number(m.id) + '">' + esc(m.name) + ' — ' + money(m.price) + '</option>').join('');
-      $('editAddQty').value = '1';
+      editMenuCat = 0;
+      renderEditMenu();
       renderEdit();
       $('editModal').classList.remove('hidden');
     }
@@ -981,17 +982,34 @@
       renderEdit();
     }
 
-    function addEditItem() {
+    function renderEditMenu() {
+      const catsEl = $('editMenuCategories'), productsEl = $('editMenuProducts');
+      if (!catsEl || !productsEl) return;
+      const cats = DATA.cats || [], menu = (DATA.menu || []).filter(m => !m.hidden);
+      if (editMenuCat >= cats.length) editMenuCat = 0;
+      catsEl.innerHTML = cats.map((cat,i) => {
+        const first = menu.find(m => Number(m.cat) === i && m.img);
+        return '<button type="button" class="sale-cat '+(i===editMenuCat?'active':'')+'" onclick="editMenuCat='+i+';renderEditMenu()">'+(first&&first.img?'<img src="'+esc(first.img)+'" alt="">':'')+esc(cat.name||cat)+'</button>';
+      }).join('');
+      const products = menu.filter(m => Number(m.cat) === editMenuCat);
+      productsEl.innerHTML = products.map(m => {
+        const selected = editState.additions.find(x => Number(x.menuId) === Number(m.id));
+        const qty = selected ? selected.qty : 0;
+        return '<article class="sale-product">'+(m.img?'<img src="'+esc(m.img)+'" alt="" class="sale-product-img" onerror="this.style.display=\'none\'">':'')+'<div class="sale-product-info"><div class="sale-product-name">'+esc(m.name)+'</div><b>'+money(m.price)+'</b><div class="sale-qty"><button type="button" onclick="changeEditMenuQty('+Number(m.id)+',-1)">−</button><b>'+qty+'</b><button type="button" class="plus" onclick="changeEditMenuQty('+Number(m.id)+',1)">+</button></div></div></article>';
+      }).join('') || '<div class="sale-empty">Bu bo‘limda mahsulot yo‘q</div>';
+    }
+    function changeEditMenuQty(menuId,delta) {
       if (!editState) return;
-      const menuId = Number($('editMenuSelect').value);
-      const qty = Number($('editAddQty').value);
-      const menu = DATA.menu.find(x => Number(x.id) === menuId);
-      if (!menu || !Number.isInteger(qty) || qty < 1 || qty > 99) return alert('Mahsulot va miqdorni to‘g‘ri tanlang (1–99).');
-      const existing = editState.additions.find(x => Number(x.menuId) === menuId);
-      if (existing) {
-        if (existing.qty + qty > 99) return alert('Bir mahsulot 99 tadan oshmasin.');
-        existing.qty += qty;
-      } else editState.additions.push({menuId,qty});
+      const menu = DATA.menu.find(x => Number(x.id) === Number(menuId));
+      if (!menu) return;
+      let item = editState.additions.find(x => Number(x.menuId) === Number(menuId));
+      if (!item && delta > 0) { editState.additions.push({menuId:Number(menuId),qty:1}); }
+      else if (item) {
+        if (item.qty + delta > 99) return alert('Bir mahsulot 99 tadan oshmasin.');
+        item.qty = Math.max(0,item.qty+delta);
+        editState.additions = editState.additions.filter(x => x.qty > 0);
+      }
+      renderEditMenu();
       renderEdit();
     }
 
