@@ -997,6 +997,10 @@
       renderEdit();
     }
 
+    const editSimpleProductStyle = document.createElement('style');
+    editSimpleProductStyle.textContent = '#editMenuProducts .cashier-edit-simple-product{display:block;min-height:0;padding:10px 12px;border-radius:10px}#editMenuProducts .cashier-edit-simple-product .sale-product-body{padding:0;gap:7px}#editMenuProducts .cashier-edit-simple-product .sale-product-name{font-size:14px;line-height:1.3}#editMenuProducts .cashier-edit-simple-product .sale-product-bottom{display:flex;align-items:center;justify-content:space-between;gap:8px}';
+    document.head.appendChild(editSimpleProductStyle);
+
     function renderEditMenu() {
       const catsEl = $('editMenuCategories'), productsEl = $('editMenuProducts');
       if (!catsEl || !productsEl) return;
@@ -1010,7 +1014,11 @@
       productsEl.innerHTML = products.map(m => {
         const selected = editState.additions.find(x => Number(x.menuId) === Number(m.id));
         const qty = selected ? selected.qty : 0;
-        return '<article class="sale-product">'+(m.img?'<img src="'+esc(m.img)+'" alt="" class="sale-product-img" onerror="this.style.display=\'none\'">':'')+'<div class="sale-product-info"><div class="sale-product-name">'+esc(m.name)+'</div><b>'+money(m.price)+'</b><div class="sale-qty"><button type="button" onclick="changeEditMenuQty('+Number(m.id)+',-1)">−</button><b>'+qty+'</b><button type="button" class="plus" onclick="changeEditMenuQty('+Number(m.id)+',1)">+</button></div></div></article>';
+        return '<article class="sale-product cashier-edit-simple-product">'+
+          '<div class="sale-product-body"><div class="sale-product-name">'+esc(m.name)+'</div>'+
+          '<div class="sale-product-bottom"><b style="color:var(--g2);white-space:nowrap">'+money(m.price)+'</b>'+
+          '<div class="sale-qty"><button type="button" onclick="changeEditMenuQty('+Number(m.id)+',-1)">−</button><b>'+qty+'</b>'+
+          '<button type="button" class="plus" onclick="changeEditMenuQty('+Number(m.id)+',1)">+</button></div></div></div></article>';
       }).join('') || '<div class="sale-empty">Bu bo‘limda mahsulot yo‘q</div>';
     }
     function changeEditMenuQty(menuId,delta) {
