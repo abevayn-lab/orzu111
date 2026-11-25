@@ -43,7 +43,7 @@ function makeReceipt(o) {
   // Takeaway ("Saboy") orders are exempt from the 5% service charge.
   const tableName = String(o.table ?? o.tableNumber ?? '').trim().toLowerCase();
   const isTakeaway = ['с собой', 'собой', 'saboy', 'soboy', 'takeaway'].includes(tableName);
-  const service = isTakeaway ? 0 : Math.round(subtotal * 0.05);
+  const service = isTakeaway ? 0 : Math.floor((subtotal * 0.05) / 100) * 100;
   const grandTotal = subtotal + service;
 
   const pad = (s, n) => esc(s).slice(0, n).padEnd(n, ' ');
