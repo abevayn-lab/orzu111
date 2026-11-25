@@ -632,6 +632,74 @@
       if ($('paidSum')) $('paidSum').textContent = money(paidSum);
     }
 
+    function renderSale() {
+      const catsEl = $('saleCategories'), productsEl = $('saleProducts');
+      if (!catsEl || !productsEl) return;
+      const cats = DATA.cats || [], menu = (DATA.menu || []).filter(m => !m.hidden);
+      catsEl.innerHTML = cats.map((name, i) => {
+        const first = menu.find(m => Number(m.cat) === i && typeof m.img === 'string' && m.img.startsWith('data:image/'));
+        return `<button type="button" class="sale-cat ${i === saleCat ? 'active' : ''}" onclick="saleCat=${i};renderSale()">
+          ${first ? `<img src="${esc(first.img)}" alt="">` : '<span style="font-size:30px">🍽️</span>'}
+          <span>${esc(name)}</span></button>`;
+      }).join('') || '<div class="sale-empty">Menyu bo‘limlari topilmadi</div>';
+      const products = menu.filter(m => Number(m.cat) === saleCat);
+      productsEl.innerHTML = products.length ? products.map(m => {
+        const qty = Number(saleCart[m.id] || 0);
+        return `<article class="sale-product">
+          ${m.img && m.img.startsWith('data:image/') ? `<img src="${esc(m.img)}" alt="${esc(m.name)}" onerror="this.style.opacity='.25';this.alt='Rasm mavjud emas'">` : '<div class="sale-product-no-image"></div>'}
+          <div class="sale-product-body"><div class="sale-product-name">${esc(m.name)}</div>
+            <div class="sale-product-bottom"><b style="color:var(--g2);white-space:nowrap">${money(m.price)}</b>
+              <div class="sale-qty">
+                <button type="button" onclick="changeSaleQty(${Number(m.id)},-1)" aria-label="Kamaytirish">−</button>
+                <b>${qty}</b>
+                <button type="button" class="plus" onclick="changeSaleQty(${Number(m.id)},1)" aria-label="Qo‘shish">+</button>
+              </div>
+            </div>
+          </div></article>`;
+      }).join('') : '<div class="sale-empty">Bu bo‘limda hozircha mahsulot yo‘q</div>';
+      renderSaleCart();
+    }
+
+    function changeSaleQty(id, delta) {
+      const next = Math.max(0, Math.min(99, Number(saleCart[id] || 0) + delta));
+      if (next) saleCart[id] = next; else delete saleCart[id];
+      renderSale();
+    }
+
+    function renderSaleCart() {
+      const chosen = (DATA.menu || []).filter(m => Number(saleCart[m.id] || 0) > 0);
+      const total = chosen.reduce((sum, m) => sum + Number(m.price || 0) * Number(saleCart[m.id] || 0), 0);
+      const count = chosen.reduce((sum, m) => sum + Number(saleCart[m.id] || 0), 0);
+      $('saleCartItems').innerHTML = chosen.length ? chosen.map(m => `
+        <div class="sale-cart-row"><span>${esc(m.name)} × ${Number(saleCart[m.id])}</span><b>${money(Number(m.price) * Number(saleCart[m.id]))}</b></div>
+      `).join('') : 'Hozircha mahsulot tanlanmagan';
+      $('saleTotal').textContent = money(total);
+      $('saleSubmit').disabled = count === 0 || busy;
+      $('saleSubmit').textContent = count ? `✓ Savdoni yakunlash (${count} ta)` : '✓ Savdoni yakunlash';
+    }
+
+    function clearSale() { saleCart = {}; renderSale(); }
+
+    async function submitCashSale() {
+      if (busy) return;
+      const items = Object.entries(saleCart).filter(([, qty]) => Number(qty) > 0)
+        .map(([menuId, qty]) => ({ menuId: Number(menuId), qty: Number(qty) }));
+      if (!items.length) return alert('Avval mahsulot tanlang');
+      const total = (DATA.menu || []).reduce((sum, m) => sum + Number(m.price || 0) * Number(saleCart[m.id] || 0), 0);
+      if (!confirm('Kassa savdosi: ' + money(total) + '\\nTo‘lovni qabul qilamizmi?')) return;
+      busy = true; renderSaleCart();
+      try {
+        const result = await api('/api/cashier/direct-sale', 'POST', {
+          items, paymentMethod: $('salePayment').value || 'Naqd'
+        });
+        saleCart = {};
+        await refresh();
+        alert('Savdo saqlandi va hisob yopildi. Chek avtomatik chiqarilmadi.');
+      } catch (e) {
+        alert('Savdoni saqlash yoki chek chiqarishda xato: ' + e.message);
+      } finally { busy = false; renderSaleCart(); }
+    }
+
     async function refresh() {
       if (!key) return;
       DATA = await api('/api/cashier/data');
