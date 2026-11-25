@@ -48,7 +48,7 @@ function makeReceipt(o) {
 
   const pad = (s, n) => esc(s).slice(0, n).padEnd(n, ' ');
   const right = (s, n) => esc(s).slice(-n).padStart(n, ' ');
-  const amount = n => (Math.round(Number(n) || 0) / 1).toFixed(2);
+  const amount = n => Math.round(Number(n) || 0).toLocaleString('en-US');
   const rule = '-'.repeat(W);
   const date = new Date(o.paidAt || o.time || Date.now());
   const opened = new Date(o.createdAt || o.openedAt || o.time || date);
@@ -98,7 +98,9 @@ function makeReceipt(o) {
     line(rule),
     Buffer.from([0x1b, 0x45, 0x01]),
     Buffer.from([0x1d, 0x21, 0x11]),
-    line(pad('Sum:', 16) + right(amount(grandTotal), 20)),
+    // Double-width printing fits 21 characters across an 80 mm receipt.
+    // Keep the label short and the total right-aligned to prevent wrapping.
+    line(pad('JAMI:', 6) + right(amount(grandTotal), 15)),
     Buffer.from([0x1d, 0x21, 0x00]),
     Buffer.from([0x1b, 0x45, 0x00]),
     line(rule),
