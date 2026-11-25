@@ -646,17 +646,144 @@
     }
 
 
-    function renderSale() {
-      const catsEl = $('saleCategories'), productsEl = $('saleProducts');
+    let ordersRefreshBusy = false;
+    async function refreshOrders() {
+      if (!key || ordersRefreshBusy) return;
+      if (!Array.isArray(DATA.menu) || !DATA.menu.length) return;
+      ordersRefreshBusy = true;
+      try {
+        const d = await api('/api/cashier/orders');
+        const cachedImages = new Map();
+        (DATA.orders || []).forEach(order => (order.items || []).forEach(item => {
+          if (item.img) cachedImages.set(String(order.id) + '|' + item.name, item.img);
+        }));
+        const nextOrders = (d.orders || []).map(order => ({
+          ...order,
+          items: (order.items || []).map(item => ({
+            ...item,
+            img: cachedImages.get(String(order.id) + '|' + item.name) ||
+              DATA.menu.find(menuItem => menuItem.name === item.name)?.img || ''
+          }))
+        }));
+        // Ma'lumot o'zgarmagan bo'lsa, ekranni qayta chizmaymiz.
+        if (JSON.stringify(nextOrders) === JSON.stringify(DATA.orders || [])) return;
+        DATA.orders = nextOrders;
+        updateStats();
+        render();
+      } finally {
+        ordersRefreshBusy = false;
+      }
+    }
+
+
+    function renderWaiters() {
+      const el = $('waiterShiftsList');
+      if (!el) return;
+      const list = DATA.waiters || [];
+      const clock = t => t ? new Date(t).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' }) : '—';
+      el.innerHTML = list.length ? list.map(w => {
+        const sh = w.shift || {};
+        return `
+          <div class="waiter-shift-row">
+            <div>
+              <b>${esc(w.name)}</b>
+              <div class="waiter-shift-meta">
+                <span style="color:${sh.online ? '#54e56c' : '#ff9d85'};font-weight:700">● ${sh.online ? 'ONLAYN' : 'OFLAYN'}</span>
+                · Ish boshladi: ${clock(sh.onlineAt)}
+              </div>
+            </div>
+            <button class="btn ${sh.online ? 'dark' : ''}" style="padding:7px 12px;font-size:12px" onclick="toggleWaiter(${Number(w.id)})">
+              ${sh.online ? 'Oflayn qilish' : 'Onlayn qilish'}
+            </button>
+          </div>
+        `;
+      }).join('') : '<div class="empty">Ofitsiantlar mavjud emas</div>';
+    }
+
+    async function toggleWaiter(id) {
+      const w = (DATA.waiters || []).find(x => String(x.id) === String(id));
+      if (!w) return;
+      const next = !(w.shift && w.shift.online);
+      try {
+        const d = await api('/api/cashier/waiter-presence', 'POST', { waiterId: id, online: next });
+        await refresh();
+        alert(w.name + (next ? ' Onlayn bo‘ldi' : ' Oflayn bo‘ldi'));
+      } catch (e) {
+        alert('Xatolik: ' + e.message);
+      }
+    }
+
+    function setTab(t) {
+      tab = t;
+      $('pendingTab').classList.toggle('on', t === 'pending');
+      $('paidTab').classList.toggle('on', t === 'paid');
+      render();
+    }
+
+    function render() {
+      const map = $('floorMap');
+      const detail = $('selectedOrder');
+      if (!map || !detail) return;
+      const q = ($('search')?.value || '').trim().toLowerCase();
+      const list = DATA.orders.filter(o =>
+        (tab === 'paid' ? o.status === 'paid' : o.status !== 'paid') &&
+        (!q || [o.id, o.table, o.waiterName].join(' ').toLowerCase().includes(q))
+      );
+      const tables = [...FLOOR_TABLES];
+      list.forEach(o => { const t=String(o.table || '').trim(); if(t && !tables.includes(t)) tables.push(t); });
+      const tableOrders = table => list.filter(o => String(o.table).trim() === table).sort((a,b)=>Number(b.time||0)-Number(a.time||0));
+      if (!tables.includes(selectedTable)) selectedTable = tables[0] || '1';
+      map.innerHTML = tables.map(table => {
+        const orders = tableOrders(table);
+        const latest = orders[0];
+        const amount = latest ? money(latest.total) : 'Bo‘sh';
+        const special = ['Banket','Soboy'].includes(table) ? ' special' : '';
+        return '<button type="button" class="floor-table'+(latest?' busy':'')+(selectedTable===table?' selected':'')+special+'" onclick="selectTable(\''+esc(table).replace(/\\/g,'\\\\').replace(/'/g,"\\'")+'\')">' +
+          '<span class="table-icon'+(special?' large':'')+'"><b class="table-number">'+esc(table)+'</b></span><span class="table-name">Stol '+esc(table)+'</span><span class="table-meta">'+esc(amount)+'</span></button>';
+      }).join('');
+      const selected = tableOrders(selectedTable);
+      $('selectedTableTitle').textContent = 'Stol: ' + selectedTable;
+      $('selectedTableStatus').textContent = selected.length ? (tab === 'paid' ? 'TO‘LANGAN' : 'BUYURTMA BOR') : 'BO‘SH';
+      $('selectedTableStatus').className = 'badge' + (selected.length ? (tab === 'paid' ? ' paid' : '') : ' paid');
+      detail.innerHTML = selected.length ? selected.map(card).join('') : '<div class="empty">Bu stolda '+(tab==='paid'?'to‘langan buyurtma':'faol buyurtma')+' yo‘q</div>';
+    }
+
+    function openNewOrder() {
+      if (tab === 'paid') return alert('To‘langanlar bo‘limida yangi buyurtma ochib bo‘lmaydi.');
+      const existingOrder = DATA.orders
+        .filter(o => String(o.table || '').trim() === String(selectedTable).trim() && o.status !== 'paid')
+        .sort((a, b) => Number(b.time || 0) - Number(a.time || 0))[0];
+      if (existingOrder) {
+        openEdit(Number(existingOrder.id));
+        return;
+      }
+      newOrderItems = [];
+      newOrderCat = 0;
+      const availableWaiters = (DATA.waiters || []).filter(w => w && w.shift && w.shift.online);
+      if (!availableWaiters.length) return alert('Hozir onlayn ofitsiant yo‘q. Avval ofitsiantni kassadan Onlayn qiling.');
+      selectedOrderWaiter = String(availableWaiters[0].id);
+      $('newOrderInfo').textContent = 'Stol: ' + selectedTable + ' · Ofitsiantni tanlang, so‘ng mahsulotlarni qo‘shing';
+      const waiterSelect = $('newOrderWaiter');
+      waiterSelect.innerHTML = availableWaiters.map(w => '<option value="' + esc(w.id) + '">' + esc(w.name) + '</option>').join('');
+      waiterSelect.value = selectedOrderWaiter;
+      waiterSelect.onchange = () => { selectedOrderWaiter = waiterSelect.value; };
+      renderNewOrderMenu();
+      $('newOrderModal').classList.remove('hidden');
+    }
+    function closeNewOrder(){ $('newOrderModal').classList.add('hidden'); newOrderItems=[]; }
+
+    function renderNewOrderMenu() {
+      const catsEl = $('newOrderCategories'), productsEl = $('newOrderProducts');
       if (!catsEl || !productsEl) return;
       const cats = DATA.cats || [], menu = (DATA.menu || []).filter(m => !m.hidden);
+      if (newOrderCat >= cats.length) newOrderCat = 0;
       catsEl.innerHTML = cats.map((name, i) => {
-        const first = menu.find(m => Number(m.cat) === i && typeof m.img === 'string' && m.img.startsWith('data:image/'));
-        return `<button type="button" class="sale-cat ${i === saleCat ? 'active' : ''}" onclick="saleCat=${i};renderSale()">
-          ${first ? `<img src="${esc(first.img)}" alt="">` : '<span style="font-size:30px">🍽️</span>'}
-          <span>${esc(name)}</span></button>`;
+        const first = menu.find(m => Number(m.cat) === i && m.img);
+        return '<button type="button" class="sale-cat '+(i === newOrderCat ? 'active' : '')+'" onclick="newOrderCat='+i+';renderNewOrderMenu()">'+
+          (first ? '<img src="'+esc(first.img)+'" alt="">' : '<span style="font-size:30px">🍽️</span>')+
+          '<span>'+esc(name)+'</span></button>';
       }).join('') || '<div class="sale-empty">Menyu bo‘limlari topilmadi</div>';
-      const products = menu.filter(m => Number(m.cat) === saleCat);
+      const products = menu.filter(m => Number(m.cat) === newOrderCat);
       productsEl.innerHTML = products.length ? products.map(m => {
         const selected = newOrderItems.find(x => Number(x.menuId) === Number(m.id));
         const qty = selected ? selected.qty : 0;
