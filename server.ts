@@ -1254,6 +1254,66 @@ app.get('/api/admin/data', adm, (_q, s) => {
   });
 });
 
+// ADMIN DAILY REPORT PRINT
+app.post('/api/admin/print-daily-report', adm, async (q: Request, s: Response) => {
+  const dateKey = String(q.body.date || '').trim();
+  if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(dateKey)) {
+    return s.status(400).json({ error: 'Hisobot sanasi noto‘g‘ri' });
+  }
+  const start = new Date(dateKey + 'T00:00:00+05:00').getTime();
+  if (!Number.isFinite(start) || new Date(start).toISOString().slice(0, 10) !== dateKey) {
+    return s.status(400).json({ error: 'Hisobot sanasi noto‘g‘ri' });
+  }
+  const end = start + 86400000;
+  const paid = O.list.filter(o => o.status === 'paid' &&
+    Number(o.paidAt || o.time || 0) >= start &&
+    Number(o.paidAt || o.time || 0) < end);
+  if (!paid.length) {
+    return s.status(404).json({ error: 'Tanlangan kunda to‘langan buyurtmalar topilmadi' });
+  }
+  const isTakeaway = (o: Order) =>
+    ['с собой', 'собой', 'saboy', 'soboy', 'takeaway'].includes(String(o.table || '').trim().toLowerCase());
+  const itemMap = new Map<string, { name: string; price: number; qty: number; total: number }>();
+  let subtotal = 0;
+  let serviceFee = 0;
+  for (const order of paid) {
+    const orderSum = (order.items || []).reduce((sum, item) =>
+      sum + Number(item.price || 0) * Number(item.qty || 0), 0);
+    subtotal += orderSum;
+    if (!isTakeaway(order)) serviceFee += Math.floor(orderSum * 0.05 / 100) * 100;
+    for (const item of order.items || []) {
+      const price = Number(item.price || 0);
+      const qty = Number(item.qty || 0);
+      const key = String(item.name || 'Mahsulot') + '|' + price;
+      const row = itemMap.get(key) || { name: String(item.name || 'Mahsulot'), price, qty: 0, total: 0 };
+      row.qty += qty;
+      row.total += price * qty;
+      itemMap.set(key, row);
+    }
+  }
+  const summary = {
+    orders: paid.length,
+    pending: 0,
+    subtotal,
+    serviceFee,
+    total: subtotal + serviceFee,
+    items: [...itemMap.values()].sort((a, b) => a.name.localeCompare(b.name, 'uz'))
+  };
+  const jobs = O.printJobs || (O.printJobs = []);
+  const job = {
+    id: String(Date.now()) + '-' + Math.random().toString(36).slice(2, 8),
+    printerIp: O.cashierSettings?.printerIp || '192.168.1.51',
+    report: { type: 'daily' as const, date: new Date(start).toISOString(), summary }
+  };
+  jobs.push(job as unknown as PrintJob);
+  if (!await save('orders')) {
+    O.printJobs = jobs.filter(existing => existing.id !== job.id);
+    return s.status(500).json({ error: 'Hisobot navbatga saqlanmadi. Qayta urinib ko‘ring.' });
+  }
+  return s.json({ ok: true, message: 'Kunlik hisobot printer navbatiga yuborildi', summary });
+});
+
+
 // ADMIN CLOSE DAY
 app.post('/api/admin/close-day', adm, async (_q, s) => {
   const previous = O.dayClosures.admin;
