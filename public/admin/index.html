@@ -806,7 +806,7 @@
         </div>
         <div class="stat">
           <h3 class="gold" style="margin-top:0">Kunlar bo‘yicha tushum</h3>
-          ${dayRows.length ? tbl(['Sana','Cheklar','Tushum','Hisobot'],dayRows.map(([dateKey,v])=>[new Date(dateKey+'T12:00:00').toLocaleDateString('uz-UZ'),v.count+' ta',f(v.sum),'<button class="btn sm" onclick="printDailyReport(\''+dateKey+'\')">🖨 Print</button>'])) : '<p style="color:#c0b5a3">Ma’lumot yo‘q.</p>'}
+          ${dayRows.length ? tbl(['Sana','Cheklar','Tushum','Hisobot'],dayRows.map(([dateKey,v])=>[new Date(dateKey+'T12:00:00').toLocaleDateString('uz-UZ'),v.count+' ta',f(v.sum),'<button class="btn sm" onclick="printDailyReport(\''+dateKey+'\')">🖨 Taomlar</button> <button class="btn sm" onclick="printShiftReport(\''+dateKey+'\')">🧾 Smena</button>'])) : '<p style="color:#c0b5a3">Ma’lumot yo‘q.</p>'}
         </div>
         <div class="stat">
           <h3 class="gold" style="margin-top:0">Buyurtmalar holati</h3>
@@ -827,6 +827,17 @@
         alert(result.message || 'Kunlik hisobot printerga yuborildi.');
       } catch (e) {
         alert('Hisobot chop etilmadi: ' + (e.message || e));
+      }
+    }
+
+    async function printShiftReport(dateKey) {
+      if (!dateKey) return alert('Hisobot sanasi topilmadi');
+      if (!confirm(dateKey + ' kungi smena hisobotini printerdan chiqarasizmi?')) return;
+      try {
+        const result = await api('/api/admin/print-shift-report', 'POST', { date: dateKey });
+        alert(result.message || 'Smena hisoboti printerga yuborildi.');
+      } catch (e) {
+        alert('Smena hisoboti chop etilmadi: ' + (e.message || e));
       }
     }
 
