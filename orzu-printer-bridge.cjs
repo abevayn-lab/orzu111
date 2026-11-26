@@ -188,7 +188,7 @@ function makeShiftReportReceipt(report) {
     line('KASSOVIY KUN ' + date.toLocaleDateString('ru-RU')),
     line('SMENA: KUNLIK HISOBOT'),
     line(rule),
-    line(pad('CHEKLAR',20) + right('MEHMON',8) + right('SUMMA',14)),
+    line(pad('KORSATKICH',20) + right('CHEKLAR',8) + right('SUMMA',14)),
     line(pad('Jami',20) + right(summary.orders || 0,8) + right(amount(summary.total),14)),
     line(rule),
     line('SKIDKI / NATSENKI'),
