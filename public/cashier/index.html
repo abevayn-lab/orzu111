@@ -573,6 +573,12 @@
 
     const $ = id => document.getElementById(id);
     const money = n => Number(n || 0).toLocaleString('uz-UZ') + " so‘m";
+    const isTakeawayOrder = o => ['с собой','собой','saboy','soboy','takeaway'].includes(String(o?.table || '').trim().toLowerCase());
+    const orderAmounts = o => {
+      const subtotal = (o?.items || []).reduce((sum, item) => sum + Number(item.price || 0) * Number(item.qty || 0), 0);
+      const service = isTakeawayOrder(o) ? 0 : Math.floor((subtotal * 0.05) / 100) * 100;
+      return { subtotal, service, total: subtotal + service };
+    };
     const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
     const encodeHeaderSecret = value => btoa(String.fromCharCode(...new TextEncoder().encode(String(value || ''))));
@@ -626,7 +632,7 @@
       const orders = Array.isArray(DATA.orders) ? DATA.orders : [];
       const pending = orders.filter(order => order.status !== 'paid').length;
       const paidOrders = orders.filter(order => order.status === 'paid');
-      const paidSum = paidOrders.reduce((sum, order) => sum + Number(order.total || 0), 0);
+      const paidSum = paidOrders.reduce((sum, order) => sum + orderAmounts(order).total, 0);
       if ($('pendingCount')) $('pendingCount').textContent = pending + ' ta';
       if ($('paidCount')) $('paidCount').textContent = paidOrders.length + ' ta';
       if ($('paidSum')) $('paidSum').textContent = money(paidSum);
@@ -673,7 +679,8 @@
       $('saleCartItems').innerHTML = chosen.length ? chosen.map(m => `
         <div class="sale-cart-row"><span>${esc(m.name)} × ${Number(saleCart[m.id])}</span><b>${money(Number(m.price) * Number(saleCart[m.id]))}</b></div>
       `).join('') : 'Hozircha mahsulot tanlanmagan';
-      $('saleTotal').textContent = money(total);
+      $('saleCartItems').innerHTML += total ? '<div class="sale-cart-row"><span>Xizmat haqi 5%</span><b>' + money(Math.floor((total * 0.05) / 100) * 100) + '</b></div>' : '';
+      $('saleTotal').textContent = money(total + Math.floor((total * 0.05) / 100) * 100);
       $('saleSubmit').disabled = count === 0 || busy;
       $('saleSubmit').textContent = count ? `✓ Savdoni yakunlash (${count} ta)` : '✓ Savdoni yakunlash';
     }
@@ -897,47 +904,17 @@
     }
 
     function card(o) {
-      return `
-        <article class="order">
-          <div>
-            <div class="orderhead">
-              <b style="color:var(--g2)">#${esc(o.id)} · Stol ${esc(o.table)}</b>
-              <span class="badge ${o.status === 'paid' ? 'paid' : ''}">${o.status === 'paid' ? 'To‘langan' : 'Kutilmoqda'}</span>
-            </div>
-            <div style="color:#d8c29d;font-size:12px;margin:5px 0">
-              Ofitsiant: <b>${esc(o.waiterName || '—')}</b> · ${new Date(o.time).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' })}
-            </div>
-            <div class="items">
-              ${(o.items || []).map(i => `
-                <div class="item">
-                  <span style="display:flex;align-items:center;gap:9px;flex:1"><span>${esc(i.name)} × ${Number(i.qty)}</span></span></span>
-                  <b>${money(Number(i.price) * Number(i.qty))}</b>
-                </div>
-              `).join('')}
-            </div>
-          </div>
-          <div>
-            <div class="total">
-              <span>JAMI:</span>
-              <span>${money(o.total)}</span>
-            </div>
-            <div class="actions">
-              ${o.status === 'paid' ? `
-                <button class="btn dark" onclick="reprint(${Number(o.id)})">🖨 Chek chiqarish</button>
-              ` : `
-                <button class="btn" onclick="markPaid(${Number(o.id)})">✓ Oplatit / Hisobni yopish</button>
-                <button class="btn dark" onclick="reprint(${Number(o.id)})">🖨 Chek oldindan olish</button>
-                <button class="btn dark" onclick="openEdit(${Number(o.id)})">✏️ Mahsulot qo‘shish / ayirish</button>
-              `}
-            </div>
-            ${o.status === 'paid' ? `
-              <div style="font-size:11px;color:#54e56c;margin-top:8px">
-                To‘landi: ${new Date(o.paidAt || o.time).toLocaleTimeString('uz-UZ')} (${esc(o.paymentMethod || 'Naqd')})
-              </div>
-            ` : ''}
-          </div>
-        </article>
-      `;
+      const amounts = orderAmounts(o);
+      return '<article class="order"><div>' +
+        '<div class="orderhead"><b style="color:var(--g2)">#' + esc(o.id) + ' · Stol ' + esc(o.table) + '</b>' +
+        '<span class="badge ' + (o.status === 'paid' ? 'paid' : '') + '">' + (o.status === 'paid' ? 'To‘langan' : 'Kutilmoqda') + '</span></div>' +
+        '<div style="color:#d8c29d;font-size:12px;margin:5px 0">Ofitsiant: <b>' + esc(o.waiterName || '—') + '</b> · ' + new Date(o.time).toLocaleTimeString('uz-UZ',{hour:"2-digit",minute:"2-digit"}) + '</div>' +
+        '<div class="items">' + (o.items || []).map(i => '<div class="item"><span>' + esc(i.name) + ' × ' + Number(i.qty) + '</span><b>' + money(Number(i.price)*Number(i.qty)) + '</b></div>').join('') + '</div></div><div>' +
+        '<div style="font-size:13px;display:flex;justify-content:space-between;margin:4px 0"><span>Savdo:</span><b>' + money(amounts.subtotal) + '</b></div>' +
+        (amounts.service ? '<div style="font-size:13px;display:flex;justify-content:space-between;margin:4px 0;color:#d8c29d"><span>Xizmat haqi 5%:</span><b>' + money(amounts.service) + '</b></div>' : '<div style="font-size:12px;color:#d8c29d">Saboy — xizmat haqi yo‘q</div>') +
+        '<div class="total"><span>JAMI:</span><span>' + money(amounts.total) + '</span></div><div class="actions">' +
+        (o.status === 'paid' ? '<button class="btn dark" onclick="reprint(' + Number(o.id) + ')">🖨 Chek chiqarish</button>' : '<button class="btn" onclick="markPaid(' + Number(o.id) + ')">✓ Oplatit / Hisobni yopish</button><button class="btn dark" onclick="reprint(' + Number(o.id) + ')">🖨 Chek oldindan olish</button><button class="btn dark" onclick="openEdit(' + Number(o.id) + ')">✏️ Mahsulot qo‘shish / ayirish</button>') +
+        '</div>' + (o.status === 'paid' ? '<div style="font-size:11px;color:#54e56c;margin-top:8px">To‘landi: ' + new Date(o.paidAt || o.time).toLocaleTimeString('uz-UZ') + ' (' + esc(o.paymentMethod || 'Naqd') + ')</div>' : '') + '</div></article>';
     }
 
     function openEdit(orderId) {
@@ -1111,7 +1088,7 @@
       try {
         const d = await api('/api/cashier/close-day', 'POST', {});
         await refresh();
-        alert('Kun yopildi!\nTo‘langan: ' + d.summary.orders + ' ta\nJami: ' + money(d.summary.total));
+        alert('Kun yopildi!\\nTo‘langan buyurtmalar: ' + d.summary.orders + ' ta\\nSavdo: ' + money(d.summary.subtotal) + '\\nXizmat haqi 5%: ' + money(d.summary.serviceFee) + '\\nYAKUNIY JAMI: ' + money(d.summary.total) + (d.reportQueued ? '\\nKunlik hisobot printerga yuborildi.' : ''));
       } catch (e) {
         alert('Kun yopilmadi: ' + e.message);
       } finally {
