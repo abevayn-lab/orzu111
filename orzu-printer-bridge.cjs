@@ -168,6 +168,55 @@ function makeDailyReportReceipt(report) {
   return Buffer.concat(out);
 }
 
+
+function makeShiftReportReceipt(report) {
+  const W = 42;
+  const summary = report.summary || {};
+  const pad = (v, n) => esc(v).slice(0,n).padEnd(n,' ');
+  const right = (v, n) => esc(v).slice(-n).padStart(n,' ');
+  const amount = n => Math.round(Number(n) || 0).toLocaleString('en-US') + '.00';
+  const rule = '-'.repeat(W);
+  const date = new Date(report.date || Date.now());
+  const out = [
+    Buffer.from([0x1b,0x40]),
+    Buffer.from([0x1b,0x61,0x01]),
+    Buffer.from([0x1b,0x45,0x01]),
+    line('ORZU RESTAURANT'),
+    Buffer.from([0x1b,0x45,0x00]),
+    line(date.toLocaleDateString('ru-RU') + ' ' + date.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit',hour12:false})),
+    line('OBSHCHIY SMENNIY OTCHET'),
+    line('KASSOVIY KUN ' + date.toLocaleDateString('ru-RU')),
+    line('SMENA: KUNLIK HISOBOT'),
+    line(rule),
+    line(pad('CHEKLAR',20) + right('MEHMON',8) + right('SUMMA',14)),
+    line(pad('Jami',20) + right(summary.orders || 0,8) + right(amount(summary.total),14)),
+    line(rule),
+    line('SKIDKI / NATSENKI'),
+    line(pad('Ustama avtomatik',28) + right(summary.markupOrders || 0,5) + right(amount(summary.markup),9)),
+    line(rule),
+    line('OCHIRISHLAR'),
+    line(summary.deletionsTracked ? 'Qayd etilgan o‘chirishlar: ' + (summary.deletions || 0) : 'O‘chirishlar: tizimda qayd etilmaydi'),
+    line(rule),
+    line('SUMMЫ PO KATEGORIYAM')
+  ];
+  for (const category of (summary.categories || [])) {
+    out.push(line(pad(category.name || 'Boshqa',28) + right(amount(category.total),14)));
+  }
+  out.push(
+    line(rule),
+    Buffer.from([0x1b,0x45,0x01]),
+    line(pad('VSEGO:',28) + right(amount(summary.total),14)),
+    Buffer.from([0x1b,0x45,0x00]),
+    line(rule),
+    line('OPLATA PO VIDAM:')
+  );
+  for (const payment of (summary.payments || [])) {
+    out.push(line(pad(payment.name || 'Naqd',20) + right(payment.count || 0,5) + right(amount(payment.total),17)));
+  }
+  out.push(line(''), Buffer.from([0x1d,0x56,0x42,0x00]));
+  return Buffer.concat(out);
+}
+
 function send(ip, bytes) {
   return new Promise((resolve, reject) => {
     const socket = net.createConnection(
@@ -201,6 +250,9 @@ async function pollPrintJobs() {
       if (job.report && job.report.type === 'daily') {
         console.log('ORZU kunlik hisobot topildi');
         await send(job.printerIp || '192.168.1.51', makeDailyReportReceipt(job.report));
+      } else if (job.report && job.report.type === 'shift') {
+        console.log('ORZU smena hisoboti topildi');
+        await send(job.printerIp || '192.168.1.51', makeShiftReportReceipt(job.report));
       } else {
         if (!job.order || !Array.isArray(job.order.items) || !job.order.items.length) {
           throw new Error('Buyurtma ma’lumoti noto‘g‘ri');
