@@ -271,7 +271,7 @@ async function pollPrintJobs() {
 
       if (!ack.ok) throw new Error('Print acknowledgement failed');
 
-      console.log('ORZU chek muvaffaqiyatli chiqarildi:', job.order.id);
+      console.log('ORZU chek muvaffaqiyatli chiqarildi:', job.report ? job.report.type : (job.order?.id ?? job.id));
 
     } else if (Date.now() - lastIdleLog > 30000) {
       console.log('ORZU: server bilan aloqa bor, navbat bo‘sh.');
