@@ -576,7 +576,7 @@
     const isTakeawayOrder = o => ['с собой','собой','saboy','soboy','takeaway'].includes(String(o?.table || '').trim().toLowerCase());
     const orderAmounts = o => {
       const subtotal = (o?.items || []).reduce((sum, item) => sum + Number(item.price || 0) * Number(item.qty || 0), 0);
-      const service = isTakeawayOrder(o) ? 0 : Math.floor((subtotal * 0.05) / 100) * 100;
+      const service = (isTakeawayOrder(o) || o?.serviceFeeRemoved) ? 0 : Math.floor((subtotal * 0.05) / 100) * 100;
       return { subtotal, service, total: subtotal + service };
     };
     const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -911,9 +911,9 @@
         '<div style="color:#d8c29d;font-size:12px;margin:5px 0">Ofitsiant: <b>' + esc(o.waiterName || '—') + '</b> · ' + new Date(o.time).toLocaleTimeString('uz-UZ',{hour:"2-digit",minute:"2-digit"}) + '</div>' +
         '<div class="items">' + (o.items || []).map(i => '<div class="item"><span>' + esc(i.name) + ' × ' + Number(i.qty) + '</span><b>' + money(Number(i.price)*Number(i.qty)) + '</b></div>').join('') + '</div></div><div>' +
         '<div style="font-size:13px;display:flex;justify-content:space-between;margin:4px 0"><span>Savdo:</span><b>' + money(amounts.subtotal) + '</b></div>' +
-        (amounts.service ? '<div style="font-size:13px;display:flex;justify-content:space-between;margin:4px 0;color:#d8c29d"><span>Xizmat haqi 5%:</span><b>' + money(amounts.service) + '</b></div>' : '<div style="font-size:12px;color:#d8c29d">Saboy — xizmat haqi yo‘q</div>') +
+        (amounts.service ? '<div style="font-size:13px;display:flex;justify-content:space-between;margin:4px 0;color:#d8c29d"><span>Xizmat haqi 5%:</span><b>' + money(amounts.service) + '</b></div>' : '<div style="font-size:12px;color:#d8c29d">' + (o.serviceFeeRemoved ? 'Xizmat haqi kassir tomonidan olib tashlangan' : 'Saboy — xizmat haqi yo‘q') + '</div>') +
         '<div class="total"><span>JAMI:</span><span>' + money(amounts.total) + '</span></div><div class="actions">' +
-        (o.status === 'paid' ? '<button class="btn dark" onclick="reprint(' + Number(o.id) + ')">🖨 Chek chiqarish</button>' : '<button class="btn" onclick="markPaid(' + Number(o.id) + ')">✓ Oplatit / Hisobni yopish</button><button class="btn dark" onclick="reprint(' + Number(o.id) + ')">🖨 Chek oldindan olish</button><button class="btn dark" onclick="openEdit(' + Number(o.id) + ')">✏️ Mahsulot qo‘shish / ayirish</button>') +
+        (o.status === 'paid' ? '<button class="btn dark" onclick="reprint(' + Number(o.id) + ')">🖨 Chek chiqarish</button>' : '<button class="btn" onclick="markPaid(' + Number(o.id) + ')">✓ Oplatit / Hisobni yopish</button><button class="btn dark" onclick="reprint(' + Number(o.id) + ')">🖨 Chek oldindan olish</button><button class="btn dark" onclick="openEdit(' + Number(o.id) + ')">✏️ Mahsulot qo‘shish / ayirish</button>' + (isTakeawayOrder(o) ? '' : '<button class="btn dark" onclick="toggleServiceFee(' + Number(o.id) + ')">' + (o.serviceFeeRemoved ? '↩ 5% xizmat haqini qaytarish' : '✕ 5% xizmat haqini olib tashlash') + '</button>')) +
         '</div>' + (o.status === 'paid' ? '<div style="font-size:11px;color:#54e56c;margin-top:8px">To‘landi: ' + new Date(o.paidAt || o.time).toLocaleTimeString('uz-UZ') + ' (' + esc(o.paymentMethod || 'Naqd') + ')</div>' : '') + '</div></article>';
     }
 
@@ -1050,6 +1050,25 @@
         orderId,
         printerIp: $('printerIp')?.value.trim() || DATA.settings?.printerIp || '192.168.1.51'
       });
+    }
+
+    async function toggleServiceFee(id) {
+      if (busy) return;
+      const order = DATA.orders.find(x => Number(x.id) === Number(id));
+      if (!order || order.status === 'paid' || isTakeawayOrder(order)) return;
+      const remove = !order.serviceFeeRemoved;
+      const action = remove ? '5% xizmat haqini olib tashlaymizmi?' : '5% xizmat haqini qaytaramizmi?';
+      if (!confirm('Stol ' + order.table + ' · ' + action)) return;
+      busy = true;
+      try {
+        const result = await api('/api/cashier/service-fee', 'POST', {orderId:id, removed:remove});
+        DATA.orders = DATA.orders.map(x => Number(x.id) === Number(id) ? result.order : x);
+        updateStats();
+        render();
+        alert(remove ? '5% xizmat haqi olib tashlandi.' : '5% xizmat haqi qayta qo‘shildi.');
+      } catch(e) {
+        alert('Xizmat haqini o‘zgartirib bo‘lmadi: ' + e.message);
+      } finally { busy = false; }
     }
 
     async function markPaid(id) {
