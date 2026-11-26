@@ -111,6 +111,7 @@ interface Order {
   paidAt?: number;
   paidBy?: string;
   paymentMethod?: string;
+  serviceFeeRemoved?: boolean;
 }
 
 interface WaiterSession {
@@ -1195,6 +1196,25 @@ app.post('/api/cashier/update-order', cashier, async (q: Request, s: Response) =
   s.json({ ok: true, order });
 });
 
+// CASHIER SERVICE FEE: per-order 5% override
+app.post('/api/cashier/service-fee', cashier, async (q: Request, s: Response) => {
+  const order = O.list.find(x => String(x.id) === String(q.body.orderId));
+  if (!order) return s.status(404).json({ error: 'Buyurtma topilmadi' });
+  if (order.status === 'paid') return s.status(409).json({ error: 'To‘langan buyurtmada xizmat haqini o‘zgartirib bo‘lmaydi' });
+  if (['с собой', 'собой', 'saboy', 'soboy', 'takeaway'].includes(String(order.table || '').trim().toLowerCase())) {
+    return s.status(400).json({ error: 'Saboy uchun xizmat haqi olinmaydi' });
+  }
+  const previous = order.serviceFeeRemoved;
+  order.serviceFeeRemoved = q.body.removed === true;
+  if (!await save('orders')) {
+    if (previous === undefined) delete order.serviceFeeRemoved;
+    else order.serviceFeeRemoved = previous;
+    saveLocally();
+    return s.status(500).json({ error: 'Xizmat haqi o‘zgarishi bazaga saqlanmadi' });
+  }
+  return s.json({ ok: true, order });
+});
+
 // CASHIER PAY: to‘lovni umumiy buyurtmalar bazasiga to‘liq saqlab, keyin tasdiqlash.
 app.post('/api/cashier/pay', cashier, async (q, s) => {
   const o = O.list.find(x => String(x.id) === String(q.body.orderId));
@@ -1292,7 +1312,7 @@ app.post('/api/admin/print-daily-report', adm, async (q: Request, s: Response) =
     const orderSum = (order.items || []).reduce((sum, item) =>
       sum + Number(item.price || 0) * Number(item.qty || 0), 0);
     subtotal += orderSum;
-    if (!isTakeaway(order)) serviceFee += Math.floor(orderSum * 0.05 / 100) * 100;
+    if (!isTakeaway(order) && !order.serviceFeeRemoved) serviceFee += Math.floor(orderSum * 0.05 / 100) * 100;
     for (const item of order.items || []) {
       const name = String(item.name || 'Mahsulot');
       const price = Number(item.price || 0);
@@ -1370,7 +1390,7 @@ app.post('/api/admin/print-shift-report', adm, async (q: Request, s: Response) =
     const orderSum = (order.items || []).reduce((sum, item) =>
       sum + Number(item.price || 0) * Number(item.qty || 0), 0);
     subtotal += orderSum;
-    if (!isTakeaway(order)) {
+    if (!isTakeaway(order) && !order.serviceFeeRemoved) {
       const fee = Math.floor(orderSum * 0.05 / 100) * 100;
       if (fee > 0) { markup += fee; markupOrders += 1; }
     }
@@ -1383,7 +1403,7 @@ app.post('/api/admin/print-shift-report', adm, async (q: Request, s: Response) =
     const method = String(order.paymentMethod || 'Naqd').trim() || 'Naqd';
     const payment = payments.get(method) || { count: 0, total: 0 };
     payment.count += 1;
-    payment.total += orderSum + (isTakeaway(order) ? 0 : Math.floor(orderSum * 0.05 / 100) * 100);
+    payment.total += orderSum + ((isTakeaway(order) || order.serviceFeeRemoved) ? 0 : Math.floor(orderSum * 0.05 / 100) * 100);
     payments.set(method, payment);
   }
   const categories = [...categoryTotals.entries()].sort((a, b) => {
