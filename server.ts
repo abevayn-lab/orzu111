@@ -1168,7 +1168,18 @@ app.post('/api/cashier/update-order', cashier, async (q: Request, s: Response) =
     }
   }
 
-  if (!updatedItems.length) return s.status(400).json({ error: 'Buyurtmada kamida bitta mahsulot qolishi kerak' });
+  if (!updatedItems.length) {
+    const orderIndex = O.list.findIndex(item => item.id === order.id);
+    if (orderIndex < 0) return s.status(404).json({ error: 'Buyurtma topilmadi' });
+    const [removedOrder] = O.list.splice(orderIndex, 1);
+    const persisted = await save('orders');
+    if (!persisted) {
+      O.list.splice(orderIndex, 0, removedOrder);
+      saveLocally();
+      return s.status(500).json({ error: 'Buyurtmani bekor qilish bazaga saqlanmadi. Buyurtma avvalgi holatiga qaytarildi.' });
+    }
+    return s.json({ ok: true, deleted: true, orderId: order.id });
+  }
   const previousItems = order.items;
   const previousTotal = order.total;
   order.items = updatedItems;
