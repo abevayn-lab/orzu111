@@ -1333,7 +1333,7 @@ app.post('/api/admin/print-daily-report', adm, async (q: Request, s: Response) =
 // ADMIN SHIFT SUMMARY PRINT
 app.post('/api/admin/print-shift-report', adm, async (q: Request, s: Response) => {
   const dateKey = String(q.body.date || '').trim();
-  if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(dateKey)) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) {
     return s.status(400).json({ error: 'Hisobot sanasi noto‘g‘ri' });
   }
   const calendarDate = new Date(dateKey + 'T00:00:00Z');
