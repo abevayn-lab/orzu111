@@ -113,6 +113,56 @@ function makeReceipt(o) {
   return Buffer.concat(out);
 }
 
+
+function makeDailyReportReceipt(report) {
+  const W = 42;
+  const summary = report.summary || {};
+  const items = Array.isArray(summary.items) ? summary.items : [];
+  const pad = (v, n) => esc(v).slice(0,n).padEnd(n,' ');
+  const right = (v, n) => esc(v).slice(-n).padStart(n,' ');
+  const amount = n => Math.round(Number(n) || 0).toLocaleString('en-US');
+  const rule = '-'.repeat(W);
+  const date = new Date(report.date || Date.now());
+  const out = [
+    Buffer.from([0x1b,0x40]),
+    Buffer.from([0x1b,0x61,0x01]),
+    Buffer.from([0x1b,0x45,0x01]),
+    Buffer.from([0x1d,0x21,0x11]),
+    line('ORZU RESTAURANT'),
+    Buffer.from([0x1d,0x21,0x00]),
+    Buffer.from([0x1b,0x45,0x00]),
+    line('KUNLIK SAVDO HISOBOTI'),
+    line(date.toLocaleDateString('en-GB') + ' ' + date.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',hour12:false})),
+    line(rule),
+    line('Sotilgan taomlar:'),
+    line(pad('Taom',23) + right('Soni',7) + right('Summa',12)),
+    line(rule)
+  ];
+  for (const item of items) {
+    const name = esc(item.name || 'Mahsulot');
+    const qty = Number(item.qty || 0);
+    const sum = amount(item.total ?? (Number(item.price || 0) * qty));
+    out.push(line(pad(name,23) + right(qty,7) + right(sum,12)));
+  }
+  out.push(
+    line(rule),
+    line(pad('Buyurtmalar:',30) + right(summary.orders || 0,12)),
+    line(pad('Savdo jami:',30) + right(amount(summary.subtotal),12)),
+    line(pad('Xizmat haqi 5%:',30) + right(amount(summary.serviceFee),12)),
+    line(rule),
+    Buffer.from([0x1b,0x45,0x01]),
+    Buffer.from([0x1d,0x21,0x11]),
+    line(pad('YAKUNIY JAMI:',16) + right(amount(summary.total),15)),
+    Buffer.from([0x1d,0x21,0x00]),
+    Buffer.from([0x1b,0x45,0x00]),
+    line(rule),
+    Buffer.from([0x1b,0x61,0x01]),
+    line('ORZU RESTAURANT'),
+    line(''), Buffer.from([0x1d,0x56,0x42,0x00])
+  );
+  return Buffer.concat(out);
+}
+
 function send(ip, bytes) {
   return new Promise((resolve, reject) => {
     const socket = net.createConnection(
@@ -143,16 +193,16 @@ async function pollPrintJobs() {
     if (data.job) {
       const job = data.job;
 
-      if (!job.order || !Array.isArray(job.order.items) || !job.order.items.length) {
-        throw new Error('Buyurtma ma’lumoti noto‘g‘ri');
+      if (job.report && job.report.type === 'daily') {
+        console.log('ORZU kunlik hisobot topildi');
+        await send(job.printerIp || '192.168.1.51', makeDailyReportReceipt(job.report));
+      } else {
+        if (!job.order || !Array.isArray(job.order.items) || !job.order.items.length) {
+          throw new Error('Buyurtma ma’lumoti noto‘g‘ri');
+        }
+        console.log('ORZU buyurtma topildi:', job.order.id);
+        await send(job.printerIp || '192.168.1.51', makeReceipt(job.order));
       }
-
-      console.log('ORZU buyurtma topildi:', job.order.id);
-
-      await send(
-        job.printerIp || '192.168.1.51',
-        makeReceipt(job.order)
-      );
 
       const ack = await fetch(API_BASE + '/api/printer/jobs/ack', {
         method: 'POST',
