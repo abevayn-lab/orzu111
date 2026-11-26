@@ -693,7 +693,7 @@
         .map(([menuId, qty]) => ({ menuId: Number(menuId), qty: Number(qty) }));
       if (!items.length) return alert('Avval mahsulot tanlang');
       const total = (DATA.menu || []).reduce((sum, m) => sum + Number(m.price || 0) * Number(saleCart[m.id] || 0), 0);
-      if (!confirm('Kassa savdosi: ' + money(total) + '\\nTo‘lovni qabul qilamizmi?')) return;
+      if (!confirm('Kassa savdosi: ' + money(total) + '\\nXizmat haqi 5%: ' + money(Math.floor((total * 0.05) / 100) * 100) + '\\nJami: ' + money(total + Math.floor((total * 0.05) / 100) * 100) + '\\nTo‘lovni qabul qilamizmi?')) return;
       busy = true; renderSaleCart();
       try {
         const result = await api('/api/cashier/direct-sale', 'POST', {
@@ -1053,7 +1053,7 @@
       if (busy) return;
       const o = DATA.orders.find(x => Number(x.id) === id);
       if (!o) return;
-      if (!confirm('Stol ' + o.table + ' · ' + money(o.total) + ' to‘lovini qabul qilasizmi?')) return;
+      if (!confirm('Stol ' + o.table + ' · Savdo: ' + money(orderAmounts(o).subtotal) + ' · Xizmat haqi 5%: ' + money(orderAmounts(o).service) + ' · Jami: ' + money(orderAmounts(o).total) + ' to‘lovini qabul qilasizmi?')) return;
       busy = true;
       try {
         const d = await api('/api/cashier/pay', 'POST', {
