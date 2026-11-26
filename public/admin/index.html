@@ -299,7 +299,12 @@
       `).join('');
 
       const views = [home, orders, menu, waiters, stats, tableQrs, categories];
-      app.innerHTML = views[tab] ? views[tab]() : home();
+      try {
+        app.innerHTML = views[tab] ? views[tab]() : home();
+      } catch (e) {
+        console.error('Admin render error:', e);
+        app.innerHTML = '<div class="stat" style="border:1px solid #a44"><h3 style="color:#ff8b8b">Bo‘limni ochishda xatolik</h3><p style="color:#f3d6d6;white-space:pre-wrap">' + String(e && e.message || e).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])) + '</p><button class="btn" onclick="load()">Qayta yuklash</button></div>';
+      }
     }
 
     const tbl = (h, r) => `
@@ -721,7 +726,8 @@
     }
     function stats() {
       const since = Number(D.statsResetAt || 0);
-      const all = (D.history || D.orders || []).filter(o => Number(o.time || 0) >= since);
+      const historyRows = Array.isArray(D.history) ? D.history : (Array.isArray(D.orders) ? D.orders : []);
+      const all = historyRows.filter(o => Number(o.time || 0) >= since);
       const paid = all.filter(o => o.status === 'paid');
       const pending = all.filter(o => o.status !== 'paid');
       const totalSum = paid.reduce((n, o) => n + Number(o.total || 0), 0);
@@ -758,7 +764,9 @@
       const categoryRows=Object.entries(categoryTotals).map(([label,value])=>({label,value}));
       const selectedCategory=statsCatFilter==='all'?'':statsCatFilter;
       const selectedDishes=selectedCategory?Object.entries(dishTotalsByCategory[selectedCategory]||{}).map(([label,value])=>({label,value})):[];
-      const categoryOptions=D.cats.map(name=>'<option value="'+String(name).replace(/"/g,'&quot;')+'" '+(statsCatFilter===name?'selected':'')+'>'+name+'</option>').join('');
+      const cats = Array.isArray(D.cats) ? D.cats : [];
+      const menuItems = Array.isArray(D.menu) ? D.menu : [];
+      const categoryOptions=cats.map(name=>'<option value="'+String(name).replace(/"/g,'&quot;')+'" '+(statsCatFilter===name?'selected':'')+'>'+name+'</option>').join('');
 
       const waiterRows = Object.entries(byWaiter).sort((a,b) => b[1].sum-a[1].sum);
       const dayRows = Object.entries(byDay).sort((a,b) => {
@@ -803,7 +811,7 @@
         </div>
         <div class="stat">
           <h3 class="gold" style="margin-top:0">Buyurtmalar holati</h3>
-          ${tbl(['Ko‘rsatkich','Soni'],[['Jami buyurtma',all.length+' ta'],['To‘langan',paid.length+' ta'],['To‘lov kutilmoqda',pending.length+' ta'],['Ofitsiantlar', (D.waiters||[]).length+' ta'],['Menyudagi taomlar',(D.menu||[]).length+' ta'],['Bo‘limlar',(D.cats||[]).length+' ta']])}
+          ${tbl(['Ko‘rsatkich','Soni'],[['Jami buyurtma',all.length+' ta'],['To‘langan',paid.length+' ta'],['To‘lov kutilmoqda',pending.length+' ta'],['Ofitsiantlar', (Array.isArray(D.waiters)?D.waiters:[]).length+' ta'],['Menyudagi taomlar',menuItems.length+' ta'],['Bo‘limlar',cats.length+' ta']])}
         </div>
         <div class="stat">
           <button class="btn red" style="width:100%" onclick="clearStats()">Statistikani noldan boshlash</button>
