@@ -799,7 +799,7 @@
         </div>
         <div class="stat">
           <h3 class="gold" style="margin-top:0">Kunlar bo‘yicha tushum</h3>
-          ${dayRows.length ? tbl(['Sana','Cheklar','Tushum'],dayRows.map(([date,v])=>[date,v.count+' ta',f(v.sum)])) : '<p style="color:#c0b5a3">Ma’lumot yo‘q.</p>'}
+          ${dayRows.length ? tbl(['Sana','Cheklar','Tushum','Hisobot'],dayRows.map(([date,v])=>{const [d,m,y]=date.split('.');const dateKey=y+'-'+m.padStart(2,'0')+'-'+d.padStart(2,'0');return [date,v.count+' ta',f(v.sum),'<button class="btn sm" onclick="printDailyReport(\\''+dateKey+'\\')">🖨 Print</button>'];})) : '<p style="color:#c0b5a3">Ma’lumot yo‘q.</p>'}
         </div>
         <div class="stat">
           <h3 class="gold" style="margin-top:0">Buyurtmalar holati</h3>
@@ -810,6 +810,17 @@
           <p style="color:#d8c29d;font-size:11px">Bu amal buyurtmalarni o‘chirmaydi — faqat yangi hisobot davrini boshlaydi.</p>
         </div>
       `;
+    }
+
+    async function printDailyReport(dateKey) {
+      if (!dateKey) return alert('Hisobot sanasi topilmadi');
+      if (!confirm(dateKey + ' kungi hisobotni printerdan chiqarasizmi?')) return;
+      try {
+        const result = await api('/api/admin/print-daily-report', 'POST', { date: dateKey });
+        alert(result.message || 'Kunlik hisobot printerga yuborildi.');
+      } catch (e) {
+        alert('Hisobot chop etilmadi: ' + (e.message || e));
+      }
     }
 
     async function clearStats() {
