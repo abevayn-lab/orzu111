@@ -1330,6 +1330,81 @@ app.post('/api/admin/print-daily-report', adm, async (q: Request, s: Response) =
 });
 
 
+// ADMIN SHIFT SUMMARY PRINT
+app.post('/api/admin/print-shift-report', adm, async (q: Request, s: Response) => {
+  const dateKey = String(q.body.date || '').trim();
+  if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(dateKey)) {
+    return s.status(400).json({ error: 'Hisobot sanasi noto‘g‘ri' });
+  }
+  const calendarDate = new Date(dateKey + 'T00:00:00Z');
+  if (!Number.isFinite(calendarDate.getTime()) || calendarDate.toISOString().slice(0, 10) !== dateKey) {
+    return s.status(400).json({ error: 'Hisobot sanasi noto‘g‘ri' });
+  }
+  const start = new Date(dateKey + 'T00:00:00+05:00').getTime();
+  const end = start + 86400000;
+  const paid = O.list.filter(o => o.status === 'paid' &&
+    Number(o.paidAt || o.time || 0) >= start &&
+    Number(o.paidAt || o.time || 0) < end);
+  if (!paid.length) {
+    return s.status(404).json({ error: 'Tanlangan kunda to‘langan buyurtmalar topilmadi' });
+  }
+  const isTakeaway = (o: Order) =>
+    ['с собой', 'собой', 'saboy', 'soboy', 'takeaway'].includes(String(o.table || '').trim().toLowerCase());
+  const categoryTotals = new Map<string, number>();
+  const payments = new Map<string, { count: number; total: number }>();
+  let subtotal = 0;
+  let markup = 0;
+  let markupOrders = 0;
+  for (const order of paid) {
+    const orderSum = (order.items || []).reduce((sum, item) =>
+      sum + Number(item.price || 0) * Number(item.qty || 0), 0);
+    subtotal += orderSum;
+    if (!isTakeaway(order)) {
+      const fee = Math.floor(orderSum * 0.05 / 100) * 100;
+      if (fee > 0) { markup += fee; markupOrders += 1; }
+    }
+    for (const item of order.items || []) {
+      const menuItem = CFG.menu.find(m => String(m.name || '').trim().toLowerCase() === String(item.name || '').trim().toLowerCase());
+      const catIndex = menuItem && Number.isInteger(Number(menuItem.cat)) ? Number(menuItem.cat) : -1;
+      const category = catIndex >= 0 ? String(CFG.cats[catIndex] || 'Boshqa') : 'Boshqa';
+      categoryTotals.set(category, (categoryTotals.get(category) || 0) + Number(item.price || 0) * Number(item.qty || 0));
+    }
+    const method = String(order.paymentMethod || 'Naqd').trim() || 'Naqd';
+    const payment = payments.get(method) || { count: 0, total: 0 };
+    payment.count += 1;
+    payment.total += orderSum + (isTakeaway(order) ? 0 : Math.floor(orderSum * 0.05 / 100) * 100);
+    payments.set(method, payment);
+  }
+  const categories = [...categoryTotals.entries()].sort((a, b) => {
+    const ai = CFG.cats.indexOf(a[0]), bi = CFG.cats.indexOf(b[0]);
+    return (ai < 0 ? 999 : ai) - (bi < 0 ? 999 : bi);
+  }).map(([name, total]) => ({ name, total }));
+  const summary = {
+    orders: paid.length,
+    guests: null,
+    subtotal,
+    markup,
+    markupOrders,
+    total: subtotal + markup,
+    payments: [...payments.entries()].map(([name, value]) => ({ name, ...value })),
+    categories,
+    deletionsTracked: false
+  };
+  const jobs = O.printJobs || (O.printJobs = []);
+  const job = {
+    id: String(Date.now()) + '-' + Math.random().toString(36).slice(2, 8),
+    printerIp: O.cashierSettings?.printerIp || '192.168.1.51',
+    report: { type: 'shift', date: new Date(start).toISOString(), summary }
+  };
+  jobs.push(job as unknown as PrintJob);
+  if (!await save('orders')) {
+    O.printJobs = jobs.filter(existing => existing.id !== job.id);
+    return s.status(500).json({ error: 'Smena hisoboti navbatga saqlanmadi. Qayta urinib ko‘ring.' });
+  }
+  return s.json({ ok: true, message: 'Smena hisoboti printer navbatiga yuborildi', summary });
+});
+
+
 // ADMIN CLOSE DAY
 app.post('/api/admin/close-day', adm, async (_q, s) => {
   const previous = O.dayClosures.admin;
