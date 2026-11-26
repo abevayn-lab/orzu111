@@ -117,7 +117,8 @@ function makeReceipt(o) {
 function makeDailyReportReceipt(report) {
   const W = 42;
   const summary = report.summary || {};
-  const items = Array.isArray(summary.items) ? summary.items : [];
+  const categories = Array.isArray(summary.categories) ? summary.categories : [];
+  const legacyItems = Array.isArray(summary.items) ? summary.items : [];
   const pad = (v, n) => esc(v).slice(0,n).padEnd(n,' ');
   const right = (v, n) => esc(v).slice(-n).padStart(n,' ');
   const amount = n => Math.round(Number(n) || 0).toLocaleString('en-US');
@@ -127,37 +128,41 @@ function makeDailyReportReceipt(report) {
     Buffer.from([0x1b,0x40]),
     Buffer.from([0x1b,0x61,0x01]),
     Buffer.from([0x1b,0x45,0x01]),
-    Buffer.from([0x1d,0x21,0x11]),
     line('ORZU RESTAURANT'),
-    Buffer.from([0x1d,0x21,0x00]),
     Buffer.from([0x1b,0x45,0x00]),
-    line('KUNLIK SAVDO HISOBOTI'),
-    line(date.toLocaleDateString('en-GB') + ' ' + date.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',hour12:false})),
+    line('RASXOD BLYUD PO KATEGORIYAM'),
+    line('KASSOVIY KUN ' + date.toLocaleDateString('ru-RU')),
+    line('SMENA / KUNLIK HISOBOT'),
+    line(date.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit',hour12:false})),
     line(rule),
-    line('Sotilgan taomlar:'),
-    line(pad('Taom',23) + right('Soni',7) + right('Summa',12)),
+    line(pad('KOD',5) + pad('BLYUDO',19) + right('KOL-VO',6) + right('SUMMA',12)),
     line(rule)
   ];
-  for (const item of items) {
-    const name = esc(item.name || 'Mahsulot');
+  const printItem = item => {
+    const code = item.code ? String(item.code) : '-';
+    const name = String(item.name || 'Mahsulot');
     const qty = Number(item.qty || 0);
     const sum = amount(item.total ?? (Number(item.price || 0) * qty));
-    out.push(line(pad(name,23) + right(qty,7) + right(sum,12)));
+    out.push(line(pad(code,5) + pad(name,19) + right(qty,6) + right(sum,12)));
+  };
+  if (categories.length) {
+    for (const category of categories) {
+      out.push(Buffer.from([0x1b,0x45,0x01]));
+      out.push(line('KATEGORIYA: ' + String(category.name || 'Boshqa')));
+      out.push(Buffer.from([0x1b,0x45,0x00]));
+      for (const item of (category.items || [])) printItem(item);
+      out.push(line(pad('VSEGO PO KATEGORII:',30) + right(amount(category.total),12)));
+      out.push(line(''));
+    }
+  } else {
+    for (const item of legacyItems) printItem(item);
   }
   out.push(
     line(rule),
-    line(pad('Buyurtmalar:',30) + right(summary.orders || 0,12)),
-    line(pad('Savdo jami:',30) + right(amount(summary.subtotal),12)),
-    line(pad('Xizmat haqi 5%:',30) + right(amount(summary.serviceFee),12)),
-    line(rule),
     Buffer.from([0x1b,0x45,0x01]),
-    Buffer.from([0x1d,0x21,0x11]),
-    line(pad('YAKUNIY JAMI:',16) + right(amount(summary.total),15)),
-    Buffer.from([0x1d,0x21,0x00]),
+    line(pad('VSEGO:',30) + right(amount(summary.subtotal ?? summary.total),12)),
     Buffer.from([0x1b,0x45,0x00]),
     line(rule),
-    Buffer.from([0x1b,0x61,0x01]),
-    line('ORZU RESTAURANT'),
     line(''), Buffer.from([0x1d,0x56,0x42,0x00])
   );
   return Buffer.concat(out);
