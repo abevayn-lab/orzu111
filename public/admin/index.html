@@ -806,7 +806,7 @@
         </div>
         <div class="stat">
           <h3 class="gold" style="margin-top:0">Kunlar bo‘yicha tushum</h3>
-          \${dayRows.length ? tbl(['Sana','Cheklar','Tushum','Hisobot'],dayRows.map(([dateKey,v])=>[new Date(dateKey+'T12:00:00').toLocaleDateString('uz-UZ'),v.count+' ta',f(v.sum),'<button class="btn sm" onclick="printDailyReport(\''+dateKey+'\')">🖨 Print</button>'])) : '<p style="color:#c0b5a3">Ma’lumot yo‘q.</p>'}
+          ${dayRows.length ? tbl(['Sana','Cheklar','Tushum','Hisobot'],dayRows.map(([dateKey,v])=>[new Date(dateKey+'T12:00:00').toLocaleDateString('uz-UZ'),v.count+' ta',f(v.sum),'<button class="btn sm" onclick="printDailyReport(\''+dateKey+'\')">🖨 Print</button>'])) : '<p style="color:#c0b5a3">Ma’lumot yo‘q.</p>'}
         </div>
         <div class="stat">
           <h3 class="gold" style="margin-top:0">Buyurtmalar holati</h3>
