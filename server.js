@@ -576,14 +576,6 @@ app.post('/api/cashier/close-day', cashier, async (q, s) => {
     total: subtotal + serviceFee,
     items: [...itemMap.values()].sort((a,b) => a.name.localeCompare(b.name, 'uz'))
   };
-  const printerIp = O.cashierSettings?.printerIp || '192.168.1.51';
-  if (paid.length) {
-    O.printJobs.push({
-      id: String(Date.now()) + '-' + Math.random().toString(36).slice(2, 8),
-      printerIp,
-      report: { type: 'daily', date: new Date().toISOString(), summary }
-    });
-  }
   O.dayClosures.cashier = Date.now();
   try { await save('orders'); }
   catch (e) { return s.status(500).json({ error: 'Kunlik hisobot saqlanmadi: ' + e.message }); }
