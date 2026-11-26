@@ -1260,10 +1260,11 @@ app.post('/api/admin/print-daily-report', adm, async (q: Request, s: Response) =
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) {
     return s.status(400).json({ error: 'Hisobot sanasi noto‘g‘ri' });
   }
-  const start = new Date(dateKey + 'T00:00:00+05:00').getTime();
-  if (!Number.isFinite(start) || new Date(start).toISOString().slice(0, 10) !== dateKey) {
+  const calendarDate = new Date(dateKey + 'T00:00:00Z');
+  if (!Number.isFinite(calendarDate.getTime()) || calendarDate.toISOString().slice(0, 10) !== dateKey) {
     return s.status(400).json({ error: 'Hisobot sanasi noto‘g‘ri' });
   }
+  const start = new Date(dateKey + 'T00:00:00+05:00').getTime();
   const end = start + 86400000;
   const paid = O.list.filter(o => o.status === 'paid' &&
     Number(o.paidAt || o.time || 0) >= start &&
