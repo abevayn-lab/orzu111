@@ -135,15 +135,14 @@ function makeDailyReportReceipt(report) {
     line('SMENA / KUNLIK HISOBOT'),
     line(date.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit',hour12:false})),
     line(rule),
-    line(pad('KOD',5) + pad('BLYUDO',19) + right('KOL-VO',6) + right('SUMMA',12)),
+    line(pad('BLYUDO',22) + right('KOL-VO',7) + right('SUMMA',13)),
     line(rule)
   ];
   const printItem = item => {
-    const code = item.code ? String(item.code) : '-';
     const name = String(item.name || 'Mahsulot');
     const qty = Number(item.qty || 0);
     const sum = amount(item.total ?? (Number(item.price || 0) * qty));
-    out.push(line(pad(code,5) + pad(name,19) + right(qty,6) + right(sum,12)));
+    out.push(line(pad(name,22) + right(qty,7) + right(sum,13)));
   };
   if (categories.length) {
     for (const category of categories) {
