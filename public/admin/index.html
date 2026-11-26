@@ -725,9 +725,6 @@
       return '<div style="display:grid;grid-template-columns:minmax(130px,190px) 1fr;gap:16px;align-items:center"><div style="width:100%;max-width:190px;aspect-ratio:1;border-radius:50%;background:conic-gradient('+stops+');position:relative;margin:auto;display:grid;place-items:center"><div style="width:58%;height:58%;border-radius:50%;background:#17100b;display:grid;place-items:center;text-align:center"><b style="color:var(--g2);font-size:18px">'+total.toLocaleString('uz-UZ')+'</b><small style="color:#d8c29d">dona</small></div></div><div style="display:grid;gap:8px">'+data.map((x,i)=>'<div style="display:grid;grid-template-columns:12px 1fr auto;gap:7px;align-items:center;font-size:12px"><i style="width:10px;height:10px;border-radius:3px;background:'+colors[i%colors.length]+'"></i><span>'+String(x.label).replace(/[&<>"']/g,'')+'</span><b>'+x.value.toLocaleString('uz-UZ')+' ta · '+Math.round(x.value/total*100)+'%</b></div>').join('')+'</div></div>';
     }
     function stats() {
-      const cats = Array.isArray(D.cats) ? D.cats : [];
-      const menuItems = Array.isArray(D.menu) ? D.menu : [];
-      const waiters = Array.isArray(D.waiters) ? D.waiters : [];
       const since = Number(D.statsResetAt || 0);
       const historyRows = Array.isArray(D.history) ? D.history : (Array.isArray(D.orders) ? D.orders : []);
       const all = historyRows.filter(o => Number(o.time || 0) >= since);
@@ -750,10 +747,7 @@
         if (!byWaiter[waiter]) byWaiter[waiter] = { count: 0, sum: 0 };
         byWaiter[waiter].count += 1;
         byWaiter[waiter].sum += Number(o.total || 0);
-        const dateObj = new Date(Number(o.paidAt || o.time || 0));
-        const dateParts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Tashkent', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(dateObj);
-        const datePart = type => dateParts.find(part => part.type === type)?.value || '00';
-        const date = datePart('year') + '-' + datePart('month') + '-' + datePart('day');
+        const date = new Date(Number(o.paidAt || o.time || 0)).toLocaleDateString('uz-UZ');
         if (!byDay[date]) byDay[date] = { count: 0, sum: 0 };
         byDay[date].count += 1;
         byDay[date].sum += Number(o.total || 0);
@@ -761,8 +755,8 @@
       const topDishes = Object.entries(byDish).sort((a,b) => b[1].qty-a[1].qty).slice(0,10);
       const categoryTotals = {}, dishTotalsByCategory = {};
       paid.forEach(o => (o.items || []).forEach(item => {
-        const qty=Number(item.qty||0), matched=menuItems.find(m=>String(m.name||'').trim().toLowerCase()===String(item.name||'').trim().toLowerCase());
-        const catName=cats[matched?Number(matched.cat):-1]||'Boshqa / menyudan o‘chirilgan';
+        const qty=Number(item.qty||0), matched=(D.menu||[]).find(m=>String(m.name).trim().toLowerCase()===String(item.name||'').trim().toLowerCase());
+        const catName=D.cats[matched?Number(matched.cat):-1]||'Boshqa / menyudan o‘chirilgan';
         categoryTotals[catName]=(categoryTotals[catName]||0)+qty;
         if(!dishTotalsByCategory[catName])dishTotalsByCategory[catName]={};
         dishTotalsByCategory[catName][item.name]=(dishTotalsByCategory[catName][item.name]||0)+qty;
@@ -770,10 +764,16 @@
       const categoryRows=Object.entries(categoryTotals).map(([label,value])=>({label,value}));
       const selectedCategory=statsCatFilter==='all'?'':statsCatFilter;
       const selectedDishes=selectedCategory?Object.entries(dishTotalsByCategory[selectedCategory]||{}).map(([label,value])=>({label,value})):[];
+      const cats = Array.isArray(D.cats) ? D.cats : [];
+      const menuItems = Array.isArray(D.menu) ? D.menu : [];
       const categoryOptions=cats.map(name=>'<option value="'+String(name).replace(/"/g,'&quot;')+'" '+(statsCatFilter===name?'selected':'')+'>'+name+'</option>').join('');
 
       const waiterRows = Object.entries(byWaiter).sort((a,b) => b[1].sum-a[1].sum);
-      const dayRows = Object.entries(byDay).sort((a,b) => b[0].localeCompare(a[0])).slice(0,14);
+      const dayRows = Object.entries(byDay).sort((a,b) => {
+        const [da,ma,ya] = a[0].split('.').map(Number);
+        const [db,mb,yb] = b[0].split('.').map(Number);
+        return new Date(yb,mb-1,db)-new Date(ya,ma-1,da);
+      }).slice(0,14);
       return `
         <div class="stat">
           <h2 class="gold" style="margin-top:0">Umumiy statistika va hisobot</h2>
@@ -807,11 +807,11 @@
         </div>
         <div class="stat">
           <h3 class="gold" style="margin-top:0">Kunlar bo‘yicha tushum</h3>
-          ${dayRows.length ? tbl(['Sana','Cheklar','Tushum','Hisobot'],dayRows.map(([date,v])=>{const [y,m,d]=date.split('-');const displayDate=d+'.'+m+'.'+y;return [displayDate,v.count+' ta',f(v.sum),'<button class="btn sm" onclick="printDailyReport(\\''+date+'\\')">🖨 Print</button>'];})) : '<p style="color:#c0b5a3">Ma’lumot yo‘q.</p>'}
+          ${dayRows.length ? tbl(['Sana','Cheklar','Tushum','Hisobot'],dayRows.map(([date,v])=>{const [d,m,y]=date.split('.');const dateKey=y+'-'+m.padStart(2,'0')+'-'+d.padStart(2,'0');return [date,v.count+' ta',f(v.sum),'<button class="btn sm" onclick="printDailyReport(\''+dateKey+'\')">🖨 Print</button>'];})) : '<p style="color:#c0b5a3">Ma’lumot yo‘q.</p>'}
         </div>
         <div class="stat">
           <h3 class="gold" style="margin-top:0">Buyurtmalar holati</h3>
-          ${tbl(['Ko‘rsatkich','Soni'],[['Jami buyurtma',all.length+' ta'],['To‘langan',paid.length+' ta'],['To‘lov kutilmoqda',pending.length+' ta'],['Ofitsiantlar', waiters.length+' ta'],['Menyudagi taomlar',menuItems.length+' ta'],['Bo‘limlar',cats.length+' ta']])}
+          ${tbl(['Ko‘rsatkich','Soni'],[['Jami buyurtma',all.length+' ta'],['To‘langan',paid.length+' ta'],['To‘lov kutilmoqda',pending.length+' ta'],['Ofitsiantlar', (Array.isArray(D.waiters)?D.waiters:[]).length+' ta'],['Menyudagi taomlar',menuItems.length+' ta'],['Bo‘limlar',cats.length+' ta']])}
         </div>
         <div class="stat">
           <button class="btn red" style="width:100%" onclick="clearStats()">Statistikani noldan boshlash</button>
