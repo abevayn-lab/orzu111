@@ -600,6 +600,31 @@ app.get('/api/admin/data', adm, (q, s) => {
   });
 });
 
+// ADMIN DAILY REPORT PRINT
+app.post('/api/admin/print-daily-report', adm, async (q, s) => {
+  const dateKey = String(q.body.date || '').trim();
+  if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(dateKey)) return s.status(400).json({ error: 'Hisobot sanasi noto‘g‘ri' });
+  const start = new Date(dateKey + 'T00:00:00+05:00').getTime();
+  if (!Number.isFinite(start) || new Date(start).toISOString().slice(0,10) !== dateKey) return s.status(400).json({ error: 'Hisobot sanasi noto‘g‘ri' });
+  const end = start + 86400000;
+  const paid = O.list.filter(o => o.status === 'paid' && Number(o.paidAt || o.time || 0) >= start && Number(o.paidAt || o.time || 0) < end);
+  if (!paid.length) return s.status(404).json({ error: 'Tanlangan kunda to‘langan buyurtmalar topilmadi' });
+  const takeaway = o => ['с собой','собой','saboy','soboy','takeaway'].includes(String(o.table || '').trim().toLowerCase());
+  const map = new Map(); let subtotal = 0; let serviceFee = 0;
+  for (const o of paid) {
+    const sum = (o.items || []).reduce((n, i) => n + Number(i.price || 0) * Number(i.qty || 0), 0);
+    subtotal += sum; if (!takeaway(o)) serviceFee += Math.floor(sum * 0.05 / 100) * 100;
+    for (const i of o.items || []) {
+      const key = String(i.name || 'Mahsulot') + '|' + Number(i.price || 0);
+      const row = map.get(key) || { name: String(i.name || 'Mahsulot'), price: Number(i.price || 0), qty: 0, total: 0 };
+      row.qty += Number(i.qty || 0); row.total += Number(i.price || 0) * Number(i.qty || 0); map.set(key, row);
+    }
+  }
+  const summary = { orders: paid.length, pending: 0, subtotal, serviceFee, total: subtotal + serviceFee, items: [...map.values()].sort((a,b) => a.name.localeCompare(b.name, 'uz')) };
+  O.printJobs.push({ id: String(Date.now()) + '-' + Math.random().toString(36).slice(2,8), printerIp: O.cashierSettings?.printerIp || '192.168.1.51', report: { type: 'daily', date: new Date(start).toISOString(), summary } });
+  try { await save('orders'); } catch (e) { return s.status(500).json({ error: 'Hisobot navbatga saqlanmadi: ' + e.message }); }
+  s.json({ ok: true, message: 'Kunlik hisobot printerga yuborildi', summary });
+});
 // ADMIN CLOSE DAY: faqat Admin panelidagi joriy ro‘yxatni yashiradi, tarixni saqlaydi.
 app.post('/api/admin/close-day', adm, (q, s) => {
   O.dayClosures.admin = Date.now();
