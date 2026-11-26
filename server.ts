@@ -1274,7 +1274,7 @@ app.post('/api/admin/print-daily-report', adm, async (q: Request, s: Response) =
   }
   const isTakeaway = (o: Order) =>
     ['с собой', 'собой', 'saboy', 'soboy', 'takeaway'].includes(String(o.table || '').trim().toLowerCase());
-  const itemMap = new Map<string, { name: string; price: number; qty: number; total: number }>();
+  const categoryMaps = new Map<string, Map<string, { code: number; name: string; price: number; qty: number; total: number }>>();
   let subtotal = 0;
   let serviceFee = 0;
   for (const order of paid) {
@@ -1283,22 +1283,37 @@ app.post('/api/admin/print-daily-report', adm, async (q: Request, s: Response) =
     subtotal += orderSum;
     if (!isTakeaway(order)) serviceFee += Math.floor(orderSum * 0.05 / 100) * 100;
     for (const item of order.items || []) {
+      const name = String(item.name || 'Mahsulot');
       const price = Number(item.price || 0);
       const qty = Number(item.qty || 0);
-      const key = String(item.name || 'Mahsulot') + '|' + price;
-      const row = itemMap.get(key) || { name: String(item.name || 'Mahsulot'), price, qty: 0, total: 0 };
+      const menuItem = CFG.menu.find(m => String(m.name || '').trim().toLowerCase() === name.trim().toLowerCase());
+      const catIndex = menuItem && Number.isInteger(Number(menuItem.cat)) ? Number(menuItem.cat) : -1;
+      const category = catIndex >= 0 ? String(CFG.cats[catIndex] || 'Boshqa') : 'Boshqa';
+      const key = name + '|' + price;
+      const group = categoryMaps.get(category) || new Map();
+      const row = group.get(key) || { code: Number(menuItem?.id || 0), name, price, qty: 0, total: 0 };
       row.qty += qty;
       row.total += price * qty;
-      itemMap.set(key, row);
+      group.set(key, row);
+      categoryMaps.set(category, group);
     }
   }
+  const categories = [...categoryMaps.entries()].map(([name, group]) => ({
+    name,
+    items: [...group.values()].sort((a, b) => a.name.localeCompare(b.name, 'uz')),
+    total: [...group.values()].reduce((sum, item) => sum + item.total, 0)
+  })).sort((a, b) => {
+    const ai = CFG.cats.indexOf(a.name), bi = CFG.cats.indexOf(b.name);
+    return (ai < 0 ? 999 : ai) - (bi < 0 ? 999 : bi);
+  });
   const summary = {
     orders: paid.length,
     pending: 0,
     subtotal,
     serviceFee,
-    total: subtotal + serviceFee,
-    items: [...itemMap.values()].sort((a, b) => a.name.localeCompare(b.name, 'uz'))
+    total: subtotal,
+    categories,
+    items: categories.flatMap(category => category.items)
   };
   const jobs = O.printJobs || (O.printJobs = []);
   const job = {
