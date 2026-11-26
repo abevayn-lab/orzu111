@@ -547,19 +547,47 @@ app.post('/api/cashier/pay', cashier, (q, s) => {
 
 
 // CASHIER CLOSE DAY: faqat kassirning kunlik ish oynasini yopadi; buyurtmalar tarixi saqlanadi.
-app.post('/api/cashier/close-day', cashier, (q, s) => {
+app.post('/api/cashier/close-day', cashier, async (q, s) => {
   const closedAt = Number(O.dayClosures.cashier || 0);
   const currentOrders = O.list.filter(o => Number(o.time || 0) >= closedAt);
   const pending = currentOrders.filter(o => o.status !== 'paid');
   const paid = currentOrders.filter(o => o.status === 'paid');
+  const isTakeaway = o => ['с собой','собой','saboy','soboy','takeaway'].includes(String(o.table || '').trim().toLowerCase());
+  const itemMap = new Map();
+  let subtotal = 0;
+  let serviceFee = 0;
+  for (const order of paid) {
+    const orderSubtotal = (order.items || []).reduce((sum, item) => sum + Number(item.price || 0) * Number(item.qty || 0), 0);
+    subtotal += orderSubtotal;
+    if (!isTakeaway(order)) serviceFee += Math.floor((orderSubtotal * 0.05) / 100) * 100;
+    for (const item of order.items || []) {
+      const key = String(item.name || 'Mahsulot') + '|' + Number(item.price || 0);
+      const row = itemMap.get(key) || { name: String(item.name || 'Mahsulot'), price: Number(item.price || 0), qty: 0, total: 0 };
+      row.qty += Number(item.qty || 0);
+      row.total += Number(item.price || 0) * Number(item.qty || 0);
+      itemMap.set(key, row);
+    }
+  }
   const summary = {
     orders: paid.length,
     pending: pending.length,
-    total: paid.reduce((sum, o) => sum + Number(o.total || 0), 0)
+    subtotal,
+    serviceFee,
+    total: subtotal + serviceFee,
+    items: [...itemMap.values()].sort((a,b) => a.name.localeCompare(b.name, 'uz'))
   };
+  const printerIp = O.cashierSettings?.printerIp || '192.168.1.51';
+  if (paid.length) {
+    O.printJobs.push({
+      id: String(Date.now()) + '-' + Math.random().toString(36).slice(2, 8),
+      printerIp,
+      report: { type: 'daily', date: new Date().toISOString(), summary }
+    });
+  }
   O.dayClosures.cashier = Date.now();
-  save('orders');
-  s.json({ ok: true, closedAt: O.dayClosures.cashier, summary, historyPreserved: true });
+  try { await save('orders'); }
+  catch (e) { return s.status(500).json({ error: 'Kunlik hisobot saqlanmadi: ' + e.message }); }
+  s.json({ ok: true, closedAt: O.dayClosures.cashier, summary, historyPreserved: true, reportQueued: paid.length > 0 });
 });
 
 // CASHIER PAGE
