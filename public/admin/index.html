@@ -747,10 +747,13 @@
         if (!byWaiter[waiter]) byWaiter[waiter] = { count: 0, sum: 0 };
         byWaiter[waiter].count += 1;
         byWaiter[waiter].sum += Number(o.total || 0);
-        const date = new Date(Number(o.paidAt || o.time || 0)).toLocaleDateString('uz-UZ');
-        if (!byDay[date]) byDay[date] = { count: 0, sum: 0 };
-        byDay[date].count += 1;
-        byDay[date].sum += Number(o.total || 0);
+        const dateObj = new Date(Number(o.paidAt || o.time || 0));
+        if (!Number.isNaN(dateObj.getTime())) {
+          const date = dateObj.getFullYear() + '-' + String(dateObj.getMonth() + 1).padStart(2, '0') + '-' + String(dateObj.getDate()).padStart(2, '0');
+          if (!byDay[date]) byDay[date] = { count: 0, sum: 0 };
+          byDay[date].count += 1;
+          byDay[date].sum += Number(o.total || 0);
+        }
       });
       const topDishes = Object.entries(byDish).sort((a,b) => b[1].qty-a[1].qty).slice(0,10);
       const categoryTotals = {}, dishTotalsByCategory = {};
@@ -769,11 +772,7 @@
       const categoryOptions=cats.map(name=>'<option value="'+String(name).replace(/"/g,'&quot;')+'" '+(statsCatFilter===name?'selected':'')+'>'+name+'</option>').join('');
 
       const waiterRows = Object.entries(byWaiter).sort((a,b) => b[1].sum-a[1].sum);
-      const dayRows = Object.entries(byDay).sort((a,b) => {
-        const [da,ma,ya] = a[0].split('.').map(Number);
-        const [db,mb,yb] = b[0].split('.').map(Number);
-        return new Date(yb,mb-1,db)-new Date(ya,ma-1,da);
-      }).slice(0,14);
+      const dayRows = Object.entries(byDay).sort((a,b) => b[0].localeCompare(a[0])).slice(0,14);
       return `
         <div class="stat">
           <h2 class="gold" style="margin-top:0">Umumiy statistika va hisobot</h2>
@@ -807,7 +806,7 @@
         </div>
         <div class="stat">
           <h3 class="gold" style="margin-top:0">Kunlar bo‘yicha tushum</h3>
-          ${dayRows.length ? tbl(['Sana','Cheklar','Tushum','Hisobot'],dayRows.map(([date,v])=>{const [d,m,y]=date.split('.');const dateKey=y+'-'+m.padStart(2,'0')+'-'+d.padStart(2,'0');return [date,v.count+' ta',f(v.sum),'<button class="btn sm" onclick="printDailyReport(\''+dateKey+'\')">🖨 Print</button>'];})) : '<p style="color:#c0b5a3">Ma’lumot yo‘q.</p>'}
+          \${dayRows.length ? tbl(['Sana','Cheklar','Tushum','Hisobot'],dayRows.map(([dateKey,v])=>[new Date(dateKey+'T12:00:00').toLocaleDateString('uz-UZ'),v.count+' ta',f(v.sum),'<button class="btn sm" onclick="printDailyReport(\''+dateKey+'\')">🖨 Print</button>'])) : '<p style="color:#c0b5a3">Ma’lumot yo‘q.</p>'}
         </div>
         <div class="stat">
           <h3 class="gold" style="margin-top:0">Buyurtmalar holati</h3>
