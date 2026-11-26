@@ -1025,15 +1025,18 @@
       if (!editState || busy) return;
       const changes = editState.originalItems.map((item,index) => ({index,qty:item.qty}));
       const addItems = editState.additions.map(item => ({menuId:item.menuId,qty:item.qty}));
-      if (!editState.originalItems.some(item => item.qty > 0) && !addItems.length) return alert('Buyurtmada kamida bitta mahsulot qolishi kerak.');
       busy = true;
       try {
         const result = await api('/api/cashier/update-order','POST',{orderId:editState.orderId,changes,addItems});
-        DATA.orders = DATA.orders.map(order => Number(order.id) === Number(result.order.id) ? result.order : order);
+        if (result.deleted) {
+          DATA.orders = DATA.orders.filter(order => Number(order.id) !== Number(result.orderId));
+        } else {
+          DATA.orders = DATA.orders.map(order => Number(order.id) === Number(result.order.id) ? result.order : order);
+        }
         updateStats();
         render();
         closeEdit();
-        alert('Buyurtma yangilandi. Jami: ' + money(result.order.total));
+        alert(result.deleted ? 'Buyurtma bekor qilindi. Stol/kabina bo‘shatildi.' : 'Buyurtma yangilandi. Jami: ' + money(result.order.total));
       } catch(e) {
         alert('Saqlashda xato: ' + e.message);
       } finally {
