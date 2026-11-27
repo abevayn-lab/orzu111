@@ -1438,8 +1438,10 @@ app.post('/api/admin/print-shift-report', adm, async (q: Request, s: Response) =
   }
   const start = new Date(dateKey + 'T00:00:00+05:00').getTime();
   const end = start + 86400000;
+  // Kunlik statistika bilan bir xil davr: statistikani noldan boshlashdan oldingi buyurtmalarni kiritma.
+  const statsSince = Number(O.statsResetAt || 0);
   const paid = O.list.filter(o => o.status === 'paid' &&
-    Number(o.paidAt || o.time || 0) >= start &&
+    Number(o.paidAt || o.time || 0) >= Math.max(start, statsSince) &&
     Number(o.paidAt || o.time || 0) < end);
   if (!paid.length) {
     return s.status(404).json({ error: 'Tanlangan kunda to‘langan buyurtmalar topilmadi' });
