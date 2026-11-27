@@ -215,7 +215,7 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script>
-    let P = localStorage.getItem('ap') || '';
+    let P = '';
     let D = { cats: [], categoryStations: {}, menu: [], waiters: [], orders: [], history: [] };
     let tab = 0;
     let img = '';
@@ -249,7 +249,6 @@
         body: b ? JSON.stringify(b) : undefined
       });
       if (r.status === 401) {
-        localStorage.removeItem('ap');
         P = '';
         login();
         throw new Error('Parol noto‘g‘ri');
@@ -278,7 +277,6 @@
       const pwInput = document.getElementById('pw');
       if (!pwInput) return;
       P = pwInput.value.trim();
-      localStorage.setItem('ap', P);
       load();
     }
 
