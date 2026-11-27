@@ -224,7 +224,7 @@
     let statsCatFilter = 'all';
 
     const f = n => Number(n || 0).toLocaleString('uz-UZ') + " so'm";
-    const isTakeawayOrder = o => ['с собой','собой','saboy','soboy','takeaway'].includes(String(o?.table || '').trim().toLowerCase());
+    const isTakeawayOrder = o => /с\s*собой|собой|saboy|soboy|take.?away/.test(String(o?.table || '').trim().toLowerCase().replace(/ё/g,'е'));
     const itemAtkazQty = item => (item?.atkazEntries || []).reduce((sum, entry) => sum + Math.max(0, Number(entry.qty || 0)), 0);
     const itemSaleQty = item => Math.max(0, Number(item?.qty || 0) - itemAtkazQty(item));
     const orderSubtotal = o => (o?.items || []).reduce((sum,item) => sum + Number(item.price || 0) * itemSaleQty(item), 0);
