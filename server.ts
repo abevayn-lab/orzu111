@@ -1447,11 +1447,22 @@ app.post('/api/admin/print-shift-report', adm, async (q: Request, s: Response) =
   const categoryTotals = new Map<string, number>();
   const payments = new Map<string, { count: number; total: number }>();
   let subtotal = 0;
+  let tableSubtotal = 0;
+  let takeawaySubtotal = 0;
   let markup = 0;
   let markupOrders = 0;
+  let tableOrders = 0;
+  let takeawayOrders = 0;
   for (const order of paid) {
     const orderSum = orderSubtotal(order);
     subtotal += orderSum;
+    if (isTakeawayOrder(order)) {
+      takeawaySubtotal += orderSum;
+      takeawayOrders += 1;
+    } else {
+      tableSubtotal += orderSum;
+      tableOrders += 1;
+    }
     const fee = orderServiceFee(order);
     if (fee > 0) { markup += fee; markupOrders += 1; }
     for (const item of order.items || []) {
@@ -1474,6 +1485,10 @@ app.post('/api/admin/print-shift-report', adm, async (q: Request, s: Response) =
     orders: paid.length,
     guests: null,
     subtotal,
+    tableSubtotal,
+    tableOrders,
+    takeawaySubtotal,
+    takeawayOrders,
     markup,
     markupOrders,
     total: subtotal + markup,
