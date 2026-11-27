@@ -90,10 +90,17 @@ interface Waiter {
   pin: string;
 }
 
+interface AtkazEntry {
+  qty: number;
+  price: number;
+  at: number;
+  by: string;
+}
 interface OrderItem {
   name: string;
   price: number;
   qty: number;
+  atkazEntries?: AtkazEntry[];
   img?: string;
   kitchenStatus?: 'new' | 'preparing' | 'ready' | 'served';
   station?: 'somsachi' | 'salatchi' | 'oshpaz' | 'waiter';
@@ -388,8 +395,14 @@ function secretHeaderMatches(q: Request, headerName: string, expected: string) {
 function isTakeawayOrder(order: Pick<Order, 'table'>): boolean {
   return ['с собой', 'собой', 'saboy', 'soboy', 'takeaway'].includes(String(order.table || '').trim().toLowerCase());
 }
+function itemAtkazQty(item: OrderItem): number {
+  return (item.atkazEntries || []).reduce((sum, entry) => sum + Math.max(0, Number(entry.qty || 0)), 0);
+}
+function itemSaleQty(item: OrderItem): number {
+  return Math.max(0, Number(item.qty || 0) - itemAtkazQty(item));
+}
 function orderSubtotal(order: Pick<Order, 'items'>): number {
-  return (order.items || []).reduce((sum, item) => sum + Number(item.price || 0) * Number(item.qty || 0), 0);
+  return (order.items || []).reduce((sum, item) => sum + Number(item.price || 0) * itemSaleQty(item), 0);
 }
 function orderServiceFee(order: Pick<Order, 'table' | 'items' | 'serviceFeeRemoved'>): number {
   const subtotal = orderSubtotal(order);
@@ -1142,6 +1155,33 @@ app.post('/api/cashier/create-order', cashier, async (q: Request, s: Response) =
   s.json({ ok: true, order });
 });
 
+// CASHIER ITEM ATKAZ: kassir mahsulotning bir qismini yoki hammasini atkaz qiladi; tarix saqlanadi.
+app.post('/api/cashier/atkaz', cashier, async (q: Request, s: Response) => {
+  const order = O.list.find(x => String(x.id) === String(q.body.orderId));
+  const index = Number(q.body.itemIndex);
+  const qty = Number(q.body.qty);
+  if (!order) return s.status(404).json({ error: 'Buyurtma topilmadi' });
+  if (!Number.isInteger(index) || index < 0 || index >= order.items.length) return s.status(400).json({ error: 'Mahsulot topilmadi' });
+  if (!Number.isInteger(qty) || qty < 1 || qty > 99) return s.status(400).json({ error: 'Atkaz miqdori noto‘g‘ri' });
+  const item = order.items[index];
+  const remaining = Number(item.qty || 0) - itemAtkazQty(item);
+  if (qty > remaining) return s.status(400).json({ error: 'Atkaz miqdori qolgan mahsulot sonidan oshmasin. Qoldiq: ' + remaining });
+  const previousEntries = item.atkazEntries ? item.atkazEntries.slice() : undefined;
+  const previousTotal = order.total;
+  item.atkazEntries = [...(item.atkazEntries || []), {
+    qty, price: Number(item.price || 0), at: Date.now(), by: String(q.body.cashierName || 'Kassir').slice(0, 60)
+  }];
+  order.total = orderSubtotal(order);
+  if (!await save('orders')) {
+    if (previousEntries === undefined) delete item.atkazEntries;
+    else item.atkazEntries = previousEntries;
+    order.total = previousTotal;
+    saveLocally();
+    return s.status(500).json({ error: 'Atkaz bazaga saqlanmadi. Qayta urinib ko‘ring.' });
+  }
+  return s.json({ ok: true, order, atkaz: item.atkazEntries[item.atkazEntries.length - 1] });
+});
+
 // CASHIER EDIT ORDER: faqat to‘lanmagan buyurtma tarkibini o‘zgartirish.
 app.post('/api/cashier/update-order', cashier, async (q: Request, s: Response) => {
   const order = O.list.find(x => String(x.id) === String(q.body.orderId));
@@ -1162,6 +1202,10 @@ app.post('/api/cashier/update-order', cashier, async (q: Request, s: Response) =
     qtyByIndex.set(index, qty);
   }
 
+  for (const [index, item] of order.items.entries()) {
+    const nextQty = qtyByIndex.has(index) ? qtyByIndex.get(index)! : Number(item.qty);
+    if (nextQty < itemAtkazQty(item)) return s.status(400).json({ error: 'Mahsulot soni avval atkaz qilingan miqdordan kam bo‘la olmaydi: ' + item.name });
+  }
   const pushItems: OrderItem[] = [];
   let updatedItems: OrderItem[] = order.items.flatMap((item, index) => {
     const qty = qtyByIndex.has(index) ? qtyByIndex.get(index)! : Number(item.qty);
@@ -1335,7 +1379,8 @@ app.post('/api/admin/print-daily-report', adm, async (q: Request, s: Response) =
     for (const item of order.items || []) {
       const name = String(item.name || 'Mahsulot');
       const price = Number(item.price || 0);
-      const qty = Number(item.qty || 0);
+      const qty = itemSaleQty(item);
+      if (!qty) continue;
       const menuItem = CFG.menu.find(m => String(m.name || '').trim().toLowerCase() === name.trim().toLowerCase());
       const catIndex = menuItem && Number.isInteger(Number(menuItem.cat)) ? Number(menuItem.cat) : -1;
       const category = catIndex >= 0 ? String(CFG.cats[catIndex] || 'Boshqa') : 'Boshqa';
@@ -1412,7 +1457,7 @@ app.post('/api/admin/print-shift-report', adm, async (q: Request, s: Response) =
       const menuItem = CFG.menu.find(m => String(m.name || '').trim().toLowerCase() === String(item.name || '').trim().toLowerCase());
       const catIndex = menuItem && Number.isInteger(Number(menuItem.cat)) ? Number(menuItem.cat) : -1;
       const category = catIndex >= 0 ? String(CFG.cats[catIndex] || 'Boshqa') : 'Boshqa';
-      categoryTotals.set(category, (categoryTotals.get(category) || 0) + Number(item.price || 0) * Number(item.qty || 0));
+      categoryTotals.set(category, (categoryTotals.get(category) || 0) + Number(item.price || 0) * itemSaleQty(item));
     }
     const method = String(order.paymentMethod || 'Naqd').trim() || 'Naqd';
     const payment = payments.get(method) || { count: 0, total: 0 };
