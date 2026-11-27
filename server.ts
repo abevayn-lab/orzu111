@@ -1372,11 +1372,12 @@ app.post('/api/admin/print-daily-report', adm, async (q: Request, s: Response) =
   }
   const categoryMaps = new Map<string, Map<string, { code: number; name: string; price: number; qty: number; total: number }>>();
   let subtotal = 0;
+  let tableSubtotal = 0;
   let serviceFee = 0;
   for (const order of paid) {
     const orderSum = orderSubtotal(order);
     subtotal += orderSum;
-    serviceFee += orderServiceFee(order);
+    if (!isTakeawayOrder(order)) tableSubtotal += orderSum;
     for (const item of order.items || []) {
       const name = String(item.name || 'Mahsulot');
       const price = Number(item.price || 0);
@@ -1402,6 +1403,8 @@ app.post('/api/admin/print-daily-report', adm, async (q: Request, s: Response) =
     const ai = CFG.cats.indexOf(a.name), bi = CFG.cats.indexOf(b.name);
     return (ai < 0 ? 999 : ai) - (bi < 0 ? 999 : bi);
   });
+  // Kunlik chek ustamasi ham faqat stollar jami savdosining 5 foizi.
+  serviceFee = Math.floor(tableSubtotal * 0.05);
   const summary = {
     orders: paid.length,
     pending: 0,
