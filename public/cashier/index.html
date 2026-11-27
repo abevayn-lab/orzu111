@@ -1192,7 +1192,7 @@
       const qty = Number(raw);
       if (qty < 1 || qty > remaining) return alert('Atkaz soni 1 dan ' + remaining + ' tagacha bo‘lishi kerak.');
       const amount = qty * Number(item.price || 0);
-      if (!confirm(item.name + ' × ' + qty + ' · ' + money(amount) + '\\nAtkaz qilinsinmi? Bu summa umumiy tushumdan ayriladi.')) return;
+      if (!confirm(item.name + ' × ' + qty + ' · ' + money(amount) + '\nAtkaz qilinsinmi? Bu summa umumiy tushumdan ayriladi.')) return;
       busy = true;
       try {
         const result = await api('/api/cashier/atkaz', 'POST', {orderId, itemIndex, qty, cashierName:'Kassir'});
