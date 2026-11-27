@@ -825,7 +825,9 @@
 
     function openNewOrder() {
       if (tab === 'paid') return alert('To‘langanlar bo‘limida yangi buyurtma ochib bo‘lmaydi.');
-      const existingOrder = DATA.orders
+      // SABOY: har bir yangi menyu chaqiruvi alohida buyurtma yaratadi.
+      // Oddiy stol va kabinalarda esa mavjud faol buyurtmaga qo‘shiladi.
+      const existingOrder = isTakeawayOrder({ table: selectedTable }) ? null : DATA.orders
         .filter(o => String(o.table || '').trim() === String(selectedTable).trim() && o.status !== 'paid')
         .sort((a, b) => Number(b.time || 0) - Number(a.time || 0))[0];
       if (existingOrder) {
