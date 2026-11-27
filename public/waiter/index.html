@@ -384,6 +384,27 @@
     document.addEventListener('pointerdown', unlockSound, { once: false });
     document.addEventListener('keydown', unlockSound, { once: false });
 
+    async function enableWaiterPush() {
+      if (!W || !('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) return;
+      if (Notification.permission !== 'granted') return;
+      try {
+        const keyResponse = await fetch('/api/push/public-key', { cache: 'no-store' });
+        const keyData = await keyResponse.json();
+        if (!keyData.enabled || !keyData.publicKey) { console.warn('Serverda VAPID kalitlari yoqilmagan'); return; }
+        const registration = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+        await navigator.serviceWorker.ready;
+        const existing = await registration.pushManager.getSubscription();
+        const base64 = keyData.publicKey.replace(/-/g, '+').replace(/_/g, '/');
+        const applicationServerKey = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+        const subscription = existing || await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey });
+        const response = await fetch('/api/push/waiter/subscribe', {
+          method: 'POST', headers: waiterHeaders(), body: JSON.stringify({ subscription: subscription.toJSON() })
+        });
+        if (!response.ok) { const data = await response.json().catch(() => ({})); throw new Error(data.error || 'Push obunasi saqlanmadi'); }
+        console.info('ORZU ofitsiant push bildirishnomasi yoqildi');
+      } catch (error) { console.warn('Ofitsiant push sozlamasi:', error); }
+    }
+
     function notifyNewOrder(order) {
       if (!('Notification' in window) || Notification.permission !== 'granted') return;
       try {
@@ -446,6 +467,7 @@
           return;
         }
         localStorage.w = JSON.stringify(W);
+        await enableWaiterPush();
         knownNewIds = new Set();
         firstOrdersLoad = true;
         load();
@@ -456,6 +478,7 @@
 
     async function load() {
       if (!W) return login();
+      if ('Notification' in window && Notification.permission === 'granted') void enableWaiterPush();
       try {
         const r = await fetch('/api/waiter/orders', { headers: waiterHeaders(), cache: 'no-store' });
         if (!r.ok) {
