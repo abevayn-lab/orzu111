@@ -540,7 +540,7 @@
           <div class="sale-cart">
             <b style="color:var(--g2)">Tanlangan mahsulotlar</b>
             <div id="newOrderItems" class="sale-empty">Menyudan mahsulot tanlang</div>
-            <div class="sale-cart-total"><span>JAMI:</span><span id="newOrderTotal">0 so‘m</span></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin:8px 0 4px;font-size:13px;color:#d8c29d"><span>Xizmat haqi 5%: <b id="newOrderService">0 so‘m</b></span><span id="newOrderServiceNote" style="font-size:11px"></span></div><div class="sale-cart-total" style="margin:5px 0 10px"><span>JAMI:</span><span id="newOrderTotal">0 so‘m</span></div>
             <button class="btn" style="width:100%;margin-top:10px" onclick="saveNewOrder()">✓ Buyurtmani saqlash</button>
           </div>
         </div>
@@ -977,7 +977,7 @@
         return m ? '<div class="sale-cart-row"><span>'+esc(m.name)+' × '+x.qty+'<small style="display:block;color:#c7bba9">'+money(m.price*x.qty)+'</small></span>'+
           '<div class="sale-qty"><button onclick="newOrderChangeQty('+Number(m.id)+',-1)">−</button><input class="qty-manual" type="number" min="0" max="99" value="'+x.qty+'" onchange="setNewOrderQty('+Number(m.id)+',this.value)" aria-label="Miqdor"><button class="plus" onclick="newOrderChangeQty('+Number(m.id)+',1)">+</button></div></div>' : '';
       }).join('')||'<p class="empty">Menyudan mahsulot tanlang</p>';
-      $('newOrderTotal').textContent=money(newOrderItems.reduce((a,x)=>{const m=DATA.menu.find(z=>Number(z.id)===Number(x.menuId));return a+(m?m.price*x.qty:0)},0));
+      const subtotal=newOrderItems.reduce((a,x)=>{const m=DATA.menu.find(z=>Number(z.id)===Number(x.menuId));return a+(m?Number(m.price)*Number(x.qty):0)},0); const takeaway=isTakeawayOrder({table:selectedTable}); const service=takeaway?0:Math.floor((subtotal*0.05)/100)*100; $('newOrderService').textContent=money(service); $('newOrderServiceNote').textContent=takeaway?'Saboy — xizmat haqi yo‘q':''; $('newOrderTotal').textContent=money(subtotal+service);
     }
 
     async function saveNewOrder(){
