@@ -580,7 +580,7 @@
 
     const $ = id => document.getElementById(id);
     const money = n => Number(n || 0).toLocaleString('uz-UZ') + " so‘m";
-    const isTakeawayOrder = o => ['с собой','собой','saboy','soboy','takeaway'].includes(String(o?.table || '').trim().toLowerCase());
+    const isTakeawayOrder = o => /с\s*собой|собой|saboy|soboy|take.?away/.test(String(o?.table || '').trim().toLowerCase().replace(/ё/g,'е'));
     const orderAmounts = o => {
       const subtotal = (o?.items || []).reduce((sum, item) => sum + Number(item.price || 0) * Math.max(0, Number(item.qty || 0) - (item.atkazEntries || []).reduce((n, entry) => n + Number(entry.qty || 0), 0)), 0);
       const service = (isTakeawayOrder(o) || o?.serviceFeeRemoved) ? 0 : Math.floor((subtotal * 0.05) / 100) * 100;
