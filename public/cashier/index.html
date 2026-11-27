@@ -1188,7 +1188,7 @@
       if (!remaining) return alert('Bu mahsulot to‘liq atkaz qilingan.');
       const raw = prompt(item.name + ' — atkaz qilinadigan sonni kiriting (qoldiq: ' + remaining + ' ta):', '1');
       if (raw === null) return;
-      if (!/^\\d+$/.test(String(raw).trim())) return alert('Atkaz sonini to‘g‘ri kiriting.');
+      if (!/^\d+$/.test(String(raw).trim())) return alert('Atkaz sonini to‘g‘ri kiriting.');
       const qty = Number(raw);
       if (qty < 1 || qty > remaining) return alert('Atkaz soni 1 dan ' + remaining + ' tagacha bo‘lishi kerak.');
       const amount = qty * Number(item.price || 0);
