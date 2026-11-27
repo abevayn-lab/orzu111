@@ -1465,8 +1465,7 @@ app.post('/api/admin/print-shift-report', adm, async (q: Request, s: Response) =
       tableSubtotal += orderSum;
       tableOrders += 1;
     }
-    const fee = orderServiceFee(order);
-    if (fee > 0) { markup += fee; markupOrders += 1; }
+    if (!isTakeawayOrder(order) && !order.serviceFeeRemoved) markupOrders += 1;
     for (const item of order.items || []) {
       const menuItem = CFG.menu.find(m => String(m.name || '').trim().toLowerCase() === String(item.name || '').trim().toLowerCase());
       const catIndex = menuItem && Number.isInteger(Number(menuItem.cat)) ? Number(menuItem.cat) : -1;
@@ -1479,6 +1478,8 @@ app.post('/api/admin/print-shift-report', adm, async (q: Request, s: Response) =
     payment.total += orderGrandTotal(order);
     payments.set(method, payment);
   }
+  // Smena ustamasi alohida buyurtmalarni yaxlitlashdan emas, stollar jami savdosidan 5% olinadi.
+  markup = Math.floor(tableSubtotal * 0.05);
   const categories = [...categoryTotals.entries()].sort((a, b) => {
     const ai = CFG.cats.indexOf(a[0]), bi = CFG.cats.indexOf(b[0]);
     return (ai < 0 ? 999 : ai) - (bi < 0 ? 999 : bi);
