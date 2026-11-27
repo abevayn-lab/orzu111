@@ -572,6 +572,8 @@
     let newOrderCat = 0;
     let selectedTable = '1';
     let selectedOrderWaiter = '';
+    let cashierSoundContext = null;
+    let knownCashierOrderEvents = null;
     const FLOOR_TABLES = ['1','2','3','4','5','6','7','8','9','10','K-11','K-12','K-13','K-14','Banket','Soboy'];
 
     const $ = id => document.getElementById(id);
@@ -606,7 +608,61 @@
       return d;
     }
 
+    function unlockCashierSound() {
+      try {
+        cashierSoundContext = cashierSoundContext || new AudioContext();
+        if (cashierSoundContext.state === 'suspended') cashierSoundContext.resume();
+      } catch (e) {}
+    }
+
+    function beepCashier() {
+      try {
+        unlockCashierSound();
+        if (!cashierSoundContext) return;
+        const now = cashierSoundContext.currentTime;
+        [1046, 1318, 1568].forEach((frequency, index) => {
+          const start = now + index * 0.2;
+          const osc = cashierSoundContext.createOscillator();
+          const gain = cashierSoundContext.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(frequency, start);
+          gain.gain.setValueAtTime(0.0001, start);
+          gain.gain.exponentialRampToValueAtTime(0.7, start + 0.025);
+          gain.gain.setValueAtTime(0.55, start + 0.12);
+          gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.28);
+          osc.connect(gain); gain.connect(cashierSoundContext.destination);
+          osc.start(start); osc.stop(start + 0.3);
+        });
+      } catch (e) {}
+    }
+
+    function notifyCashierNewOrder(order) {
+      const message = 'Stol ' + order.table + ' · Buyurtma #' + order.id;
+      const toast = document.createElement('div');
+      toast.textContent = '🔔 YANGI MIJOZ ZAKASI! ' + message;
+      toast.style.cssText = 'position:fixed;right:18px;top:18px;z-index:99999;padding:16px 22px;border-radius:14px;background:#ffe39a;color:#241606;font-weight:900;box-shadow:0 6px 24px #0008';
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 6000);
+      if ('Notification' in window && Notification.permission === 'granted') {
+        try {
+          const n = new Notification('ORZU — yangi mijoz zakasi!', {
+            body: message + ' · ' + (order.items || []).length + ' xil taom',
+            tag: 'orzu-cashier-' + order.id + '-' + order.time,
+            renotify: true
+          });
+          n.onclick = () => { window.focus(); n.close(); };
+        } catch (e) {}
+      }
+    }
+
+    document.addEventListener('pointerdown', unlockCashierSound);
+    document.addEventListener('keydown', unlockCashierSound);
+
     async function signIn() {
+      unlockCashierSound();
+      if ('Notification' in window && Notification.permission === 'default') {
+        try { await Notification.requestPermission(); } catch (e) {}
+      }
       key = $('pass').value.trim();
       if (!key) return alert('Parolni kiriting');
       try {
@@ -674,7 +730,7 @@
       if (!/^\d+$/.test(raw)) return renderSale();
       const next = Math.max(0, Math.min(99, Number(raw)));
       if (next) saleCart[id] = next; else delete saleCart[id];
-      renderSale();
+      renderSaleCart();
     }
 
     function changeSaleQty(id, delta) {
@@ -751,6 +807,14 @@
               DATA.menu.find(menuItem => menuItem.name === item.name)?.img || ''
           }))
         }));
+        const orderEvents = new Set(nextOrders.filter(order => order.status !== 'paid').map(order => String(order.id) + ':' + String(order.time)));
+        if (knownCashierOrderEvents === null) {
+          knownCashierOrderEvents = orderEvents;
+        } else {
+          const arrivals = nextOrders.filter(order => order.status !== 'paid' && !knownCashierOrderEvents.has(String(order.id) + ':' + String(order.time)));
+          arrivals.forEach(order => { beepCashier(); notifyCashierNewOrder(order); });
+          knownCashierOrderEvents = orderEvents;
+        }
         // Ma'lumot o'zgarmagan bo'lsa, ekranni qayta chizmaymiz.
         if (JSON.stringify(nextOrders) === JSON.stringify(DATA.orders || [])) return;
         DATA.orders = nextOrders;
