@@ -12,7 +12,7 @@
 const tabs=document.getElementById('tabs'),items=document.getElementById('items');let cats=[],menu=[],active=0;
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const money=n=>Number(n||0).toLocaleString('uz-UZ')+" so‘m";
-function isBarCategory(index){const name=String(cats[index]||'').normalize('NFKC').toLocaleLowerCase('uz-UZ').replace(/[ьъ]/g,'').replace(/[^a-zа-яё]/gi,'');return name.startsWith('bar')||name.includes('бар');}
+function isBarCategory(index){const name=String(cats[index]||'').normalize('NFKC').toLocaleLowerCase('uz-UZ').replace(/[ьъ]/g,'').replace(/[^a-zа-яё]/gi,'');return name.includes('bar')||name.includes('бар');}
 function firstVisibleCategory(){const i=cats.findIndex((_,index)=>!isBarCategory(index));return i>=0?i:0;}
 function renderTabs(){if(isBarCategory(active))active=firstVisibleCategory();tabs.innerHTML=cats.map((c,i)=>isBarCategory(i)?'':'<button class="tab '+(i===active?'on':'')+'" type="button" data-i="'+i+'">'+esc(c)+'</button>').join('');}
 function imageUrl(value){const raw=String(value||'').trim();if(!raw)return 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&auto=format&fit=crop&q=80';if(/^https?:\/\//i.test(raw)||/^data:image\//i.test(raw)||raw.startsWith('/'))return raw;return '/'+raw.replace(/^\.\//,'');}
