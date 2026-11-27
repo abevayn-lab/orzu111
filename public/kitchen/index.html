@@ -35,16 +35,25 @@ input{width:100%;margin:12px 0}button{cursor:pointer;font-weight:700}button:disa
 <section id="board"><div class="stats" id="stats"></div><div style="height:14px"></div><div id="tickets" class="grid"></div></section>
 </main>
 <script>
-let secret=localStorage.getItem('orzu-kitchen-pass')||'', busy=false, lastBoardSnapshot='';
+let secret=localStorage.getItem('orzu-kitchen-pass')||'', busy=false, lastBoardSnapshot='', kitchenSoundContext=null, knownKitchenOrderEvents=null;
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function headers(){return {'Content-Type':'application/json','x-kitchen':btoa(unescape(encodeURIComponent(secret)))}}
 async function api(url,method='GET',body){const r=await fetch(url,{method,headers:headers(),body:body?JSON.stringify(body):undefined});const j=await r.json();if(r.status===401)throw Error('Parol noto‘g‘ri');if(!r.ok)throw Error(j.error||'Xatolik');return j}
 function showLogin(message=''){document.getElementById('login').hidden=false;document.getElementById('board').hidden=true;document.getElementById('error').textContent=message}
-async function login(){secret=document.getElementById('pass').value;try{await api('/api/kitchen/orders');localStorage.setItem('orzu-kitchen-pass',secret);document.getElementById('login').hidden=true;document.getElementById('board').hidden=false;load()}catch(e){showLogin(e.message)}}
+function unlockKitchenSound(){try{kitchenSoundContext=kitchenSoundContext||new AudioContext();if(kitchenSoundContext.state==='suspended')kitchenSoundContext.resume()}catch(e){}}
+function beepKitchen(){try{unlockKitchenSound();if(!kitchenSoundContext)return;const now=kitchenSoundContext.currentTime;[880,1175,1568].forEach((f,i)=>{const start=now+i*.2,osc=kitchenSoundContext.createOscillator(),gain=kitchenSoundContext.createGain();osc.type='sine';osc.frequency.setValueAtTime(f,start);gain.gain.setValueAtTime(.0001,start);gain.gain.exponentialRampToValueAtTime(.75,start+.025);gain.gain.setValueAtTime(.55,start+.13);gain.gain.exponentialRampToValueAtTime(.0001,start+.3);osc.connect(gain);gain.connect(kitchenSoundContext.destination);osc.start(start);osc.stop(start+.32)})}catch(e){}}
+function notifyKitchenOrder(order){const msg='Stol '+order.table+' · Buyurtma #'+order.id;const toast=document.createElement('div');toast.textContent='🔔 YANGI ZAKAS! '+msg;toast.style.cssText='position:fixed;right:16px;top:72px;z-index:99999;padding:15px 20px;border-radius:12px;background:#ffe39a;color:#241606;font-weight:900;box-shadow:0 6px 24px #0009';document.body.appendChild(toast);setTimeout(()=>toast.remove(),6000);if('Notification'in window&&Notification.permission==='granted'){try{const n=new Notification('ORZU — oshxonaga yangi zakas!',{body:msg,tag:'orzu-kitchen-'+order.id+'-'+order.time,renotify:true});n.onclick=()=>{window.focus();n.close()}}catch(e){}}}
+document.addEventListener('pointerdown',unlockKitchenSound);document.addEventListener('keydown',unlockKitchenSound);
+async function login(){unlockKitchenSound();if('Notification'in window&&Notification.permission==='default'){try{await Notification.requestPermission()}catch(e){}}secret=document.getElementById('pass').value;try{await api('/api/kitchen/orders');localStorage.setItem('orzu-kitchen-pass',secret);document.getElementById('login').hidden=true;document.getElementById('board').hidden=false;load()}catch(e){showLogin(e.message)}}
 function label(s){return ({new:'Yangi',preparing:'Tayyorlanmoqda',ready:'Tayyor',served:'Berildi'})[s]||s}
 function next(s){return ({new:'preparing',preparing:'ready',ready:'served',served:'new'})[s]||'preparing'}
 function render(data){
  const orders=data.orders||[], counts={new:0,preparing:0,ready:0,served:0};
+ const events=new Set(orders.filter(o=>o.status!=='paid').map(o=>String(o.id)+':'+String(o.time)));
+ if(knownKitchenOrderEvents===null){knownKitchenOrderEvents=events}else{
+  orders.filter(o=>o.status!=='paid'&&!knownKitchenOrderEvents.has(String(o.id)+':'+String(o.time))).forEach(o=>{beepKitchen();notifyKitchenOrder(o)});
+  knownKitchenOrderEvents=events;
+ }
  const snapshot=JSON.stringify(orders);
  if(snapshot===lastBoardSnapshot){document.getElementById('updated').textContent='Oxirgi yangilanish: '+new Date().toLocaleTimeString('uz-UZ',{hour:'2-digit',minute:'2-digit',second:'2-digit'});return;}
  lastBoardSnapshot=snapshot;
