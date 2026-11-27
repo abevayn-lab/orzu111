@@ -768,7 +768,12 @@
       const all = historyRows.filter(o => Number(o.time || 0) >= since);
       const paid = all.filter(o => o.status === 'paid');
       const pending = all.filter(o => o.status !== 'paid');
-      const totalSum = paid.reduce((n, o) => n + orderGrandTotal(o), 0);
+      const tableOrders = paid.filter(o => !isTakeawayOrder(o));
+      const takeawayOrders = paid.filter(o => isTakeawayOrder(o));
+      const tableSales = tableOrders.reduce((n, o) => n + orderSubtotal(o), 0);
+      const takeawaySales = takeawayOrders.reduce((n, o) => n + orderSubtotal(o), 0);
+      const serviceFeeTotal = paid.reduce((n, o) => n + orderServiceFee(o), 0);
+      const totalSum = tableSales + takeawaySales + serviceFeeTotal;
       const soldQty = paid.reduce((n, o) => n + (o.items || []).reduce((q, item) => q + itemSaleQty(item), 0), 0);
       const average = paid.length ? Math.round(totalSum / paid.length) : 0;
       const byDish = {};
@@ -819,6 +824,9 @@
             <div class="home-stat"><span>Jami buyurtmalar</span><b>${all.length} ta</b></div>
             <div class="home-stat"><span>To‘langan cheklar</span><b>${paid.length} ta</b></div>
             <div class="home-stat"><span>Kutilayotganlar</span><b>${pending.length} ta</b></div>
+            <div class="home-stat"><span>Stollardagi savdo (${tableOrders.length} ta)</span><b style="font-size:16px">${f(tableSales)}</b></div>
+            <div class="home-stat"><span>Saboy savdosi (${takeawayOrders.length} ta)</span><b style="font-size:16px">${f(takeawaySales)}</b></div>
+            <div class="home-stat"><span>Stollardan yig‘ilgan 5% xizmat haqi</span><b style="font-size:16px">${f(serviceFeeTotal)}</b></div>
             <div class="home-stat"><span>Jami tushum</span><b style="font-size:16px">${f(totalSum)}</b></div>
             <div class="home-stat"><span>O‘rtacha chek</span><b style="font-size:16px">${f(average)}</b></div>
             <div class="home-stat"><span>Sotilgan mahsulotlar</span><b>${soldQty} ta</b></div>
