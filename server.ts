@@ -393,7 +393,8 @@ function secretHeaderMatches(q: Request, headerName: string, expected: string) {
 }
 
 function isTakeawayOrder(order: Pick<Order, 'table'>): boolean {
-  return ['с собой', 'собой', 'saboy', 'soboy', 'takeaway'].includes(String(order.table || '').trim().toLowerCase());
+  const table = String(order.table || '').trim().toLowerCase().replace(/ё/g, 'е');
+  return /с\s*собой|собой|saboy|soboy|take.?away/.test(table);
 }
 function itemAtkazQty(item: OrderItem): number {
   return (item.atkazEntries || []).reduce((sum, entry) => sum + Math.max(0, Number(entry.qty || 0)), 0);
@@ -1261,7 +1262,7 @@ app.post('/api/cashier/service-fee', cashier, async (q: Request, s: Response) =>
   const order = O.list.find(x => String(x.id) === String(q.body.orderId));
   if (!order) return s.status(404).json({ error: 'Buyurtma topilmadi' });
   if (order.status === 'paid') return s.status(409).json({ error: 'To‘langan buyurtmada xizmat haqini o‘zgartirib bo‘lmaydi' });
-  if (['с собой', 'собой', 'saboy', 'soboy', 'takeaway'].includes(String(order.table || '').trim().toLowerCase())) {
+  if (isTakeawayOrder(order)) {
     return s.status(400).json({ error: 'Saboy uchun xizmat haqi olinmaydi' });
   }
   const previous = order.serviceFeeRemoved;
