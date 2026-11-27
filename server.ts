@@ -1317,8 +1317,10 @@ app.post('/api/admin/print-daily-report', adm, async (q: Request, s: Response) =
   }
   const start = new Date(dateKey + 'T00:00:00+05:00').getTime();
   const end = start + 86400000;
+  // Admin statistikasi bilan bir xil davr: statistika noldan boshlangan vaqtgacha bo‘lgan savdolarni chiqarma.
+  const statsSince = Number(O.statsResetAt || 0);
   const paid = O.list.filter(o => o.status === 'paid' &&
-    Number(o.paidAt || o.time || 0) >= start &&
+    Number(o.paidAt || o.time || 0) >= Math.max(start, statsSince) &&
     Number(o.paidAt || o.time || 0) < end);
   if (!paid.length) {
     return s.status(404).json({ error: 'Tanlangan kunda to‘langan buyurtmalar topilmadi' });
@@ -1359,7 +1361,7 @@ app.post('/api/admin/print-daily-report', adm, async (q: Request, s: Response) =
     pending: 0,
     subtotal,
     serviceFee,
-    total: subtotal,
+    total: subtotal + serviceFee,
     categories,
     items: categories.flatMap(category => category.items)
   };
