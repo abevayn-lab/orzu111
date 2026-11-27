@@ -554,7 +554,7 @@ app.get('/api/qr/verify', (q, s) => {
 
 // CUSTOMER ORDER
 app.post('/api/order', async (q, s) => {
-  const table = String(q.body.table || '').trim();
+  const scannedTable = String(q.body.table || '').trim();
   const qrToken = String(q.body.qr || '');
   const items: OrderItem[] = [];
   if (!/^[A-Za-z0-9_-]{1,20}$/.test(table)) return s.status(400).json({ error: 'Stol raqami noto‘g‘ri' });
@@ -565,9 +565,11 @@ app.post('/api/order', async (q, s) => {
   // the table, so accept a token-less request for a syntactically valid table.
   // If a token is supplied, it must always be valid (never downgrade invalid signed QR).
   const legacyTableQr = !qrToken && /^[A-Za-z0-9_-]{1,20}$/.test(table);
-  if (!validTableQrToken(table, qrToken) && !legacyTableQr) {
+  if (!validTableQrToken(scannedTable, qrToken) && !legacyTableQr) {
     return s.status(403).json({ error: 'Buyurtma faqat stol QR kodi orqali beriladi. Stol ustidagi QR kodni skanerlang.' });
   }
+  // QR kodlardagi 11-14 raqamlar kassadagi K-11...K-14 kabinalariga tegishli.
+  const table = ({ '11': 'K-11', '12': 'K-12', '13': 'K-13', '14': 'K-14' } as Record<string, string>)[scannedTable] || scannedTable;
   for (const i of q.body.items) {
     const m = CFG.menu.find(m => Number(m.id) === Number(i?.id) && !m.hidden);
     const qty = Number(i?.qty);
