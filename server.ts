@@ -557,7 +557,7 @@ app.post('/api/order', async (q, s) => {
   const scannedTable = String(q.body.table || '').trim();
   const qrToken = String(q.body.qr || '');
   const items: OrderItem[] = [];
-  if (!/^[A-Za-z0-9_-]{1,20}$/.test(table)) return s.status(400).json({ error: 'Stol raqami noto‘g‘ri' });
+  if (!/^[A-Za-z0-9_-]{1,20}$/.test(scannedTable)) return s.status(400).json({ error: 'Stol raqami noto‘g‘ri' });
   if (!Array.isArray(q.body.items)) return s.status(400).json({ error: 'Buyurtma mahsulotlari noto‘g‘ri yuborildi' });
   // Backward compatibility: previously printed table QR codes contain ?table=<number>
   // but no signed token. Keep those public table links working while validating all new signed QR codes.
