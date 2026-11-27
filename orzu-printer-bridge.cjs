@@ -191,7 +191,7 @@ function makeShiftReportReceipt(report) {
     line(pad('Jami cheklar',20) + right(summary.orders || 0,8) + right(amount(summary.total),14)),
     line(rule),
     line(pad('KASSA — STOLLAR',28) + right(amount(summary.tableSubtotal ?? summary.subtotal),14)),
-    line(pad('Ustama 5% (stollar)',28) + right(summary.markupOrders || 0,5) + right(amount(summary.markup),9)),
+    line(pad('Ustama 5% (stollar)',28) + right(amount(summary.markup),14)),
     ...(Number(summary.takeawaySubtotal || 0) > 0 ? [line(pad('SABOY SAVDOSI',28) + right(amount(summary.takeawaySubtotal),14))] : []),
     line(rule),
     line('OCHIRISHLAR'),
