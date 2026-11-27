@@ -284,7 +284,7 @@
         .replace(/[ьъ]/g, '')
         .replace(/[^a-zа-яё]/gi, '');
       // Hide Bar in every customer QR menu, including labels such as "Bar 🍹" or "BAR ichimliklar".
-      return name.startsWith('bar') || name.includes('бар');
+      return name.includes('bar') || name.includes('бар');
     }
 
     function firstCustomerCategory() {
