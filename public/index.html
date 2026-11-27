@@ -266,7 +266,7 @@
         C = nextCats;
         M = nextMenu;
         const nextIndex = C.indexOf(selectedName);
-        cat = nextIndex >= 0 ? nextIndex : Math.min(cat, Math.max(0, C.length - 1));
+        cat = nextIndex >= 0 && !isBarCategory(nextIndex) ? nextIndex : firstCustomerCategory();
         tabs();
         show();
         const total = sum();
@@ -277,13 +277,25 @@
       }
     }
 
+    function isBarCategory(index) {
+      const name = String(C[index] || '').trim().toLocaleLowerCase('uz-UZ');
+      return name === 'bar' || name === 'бар';
+    }
+
+    function firstCustomerCategory() {
+      const index = C.findIndex((_, i) => !isBarCategory(i));
+      return index >= 0 ? index : 0;
+    }
+
     function tabs() {
-      tb.innerHTML = C.map((c, i) => `
-        <button class="tab ${i === cat ? 'on' : ''}" onclick="cat=${i};tabs();show()">${c}</button>
+      if (isBarCategory(cat)) cat = firstCustomerCategory();
+      tb.innerHTML = C.map((name, i) => isBarCategory(i) ? '' : `
+        <button class="tab ${i === cat ? 'on' : ''}" onclick="cat=${i};tabs();show()">${name}</button>
       `).join('');
     }
 
     function show() {
+      if (isBarCategory(cat)) cat = firstCustomerCategory();
       const items = M.filter(m => m.cat === cat);
       const hasUserPhoto = m => {
         const name = String(m.name || '').toLocaleLowerCase('uz-UZ');
