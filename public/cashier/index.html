@@ -325,6 +325,9 @@
     .sale-qty button{width:44px;height:44px;border-radius:12px;border:1px solid #b88a3d;background:#30200f;color:#ffe39a;font-size:27px;font-weight:900;cursor:pointer}
     .sale-qty button.plus{background:linear-gradient(110deg,#ffe18d,#d58e20);color:#241606;border-color:#ffe18d}
     .sale-qty b{min-width:22px;text-align:center;font-size:18px}
+    .sale-qty .qty-manual{box-sizing:border-box;width:42px;min-width:32px;height:36px;padding:2px 3px;text-align:center;border:1px solid #aaa;border-radius:7px;background:#fff;color:#171717;font-size:15px;font-weight:900;outline-offset:2px}
+    .edit-qty .qty-manual{box-sizing:border-box;width:46px;height:32px;text-align:center;border:1px solid #aaa;border-radius:7px;background:#fff;color:#171717;font-weight:900;font-size:14px}
+    .qty-manual::-webkit-inner-spin-button,.qty-manual::-webkit-outer-spin-button{opacity:1}
     .sale-cart{margin-top:16px;padding:15px;border:1px solid #8a642c;border-radius:16px;background:#100c09}
     .sale-cart-row{display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid #3a2b18;font-size:13px}
     .sale-cart-total{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:13px 0;font-size:19px;font-weight:900;color:var(--g2)}
@@ -657,13 +660,21 @@
             <div class="sale-product-bottom"><b style="color:var(--g2);white-space:nowrap">${money(m.price)}</b>
               <div class="sale-qty">
                 <button type="button" onclick="changeSaleQty(${Number(m.id)},-1)" aria-label="Kamaytirish">−</button>
-                <b>${qty}</b>
+                <input class="qty-manual" type="number" min="0" max="99" value="${qty}" onchange="setSaleQty(${Number(m.id)},this.value)" aria-label="Miqdor">
                 <button type="button" class="plus" onclick="changeSaleQty(${Number(m.id)},1)" aria-label="Qo‘shish">+</button>
               </div>
             </div>
           </div></article>`;
       }).join('') : '<div class="sale-empty">Bu bo‘limda hozircha mahsulot yo‘q</div>';
       renderSaleCart();
+    }
+
+    function setSaleQty(id, value) {
+      const raw = String(value).trim();
+      if (!/^\\d+$/.test(raw)) return renderSale();
+      const next = Math.max(0, Math.min(99, Number(raw)));
+      if (next) saleCart[id] = next; else delete saleCart[id];
+      renderSale();
     }
 
     function changeSaleQty(id, delta) {
@@ -867,10 +878,22 @@
         return '<article class="sale-product cashier-simple-product">'+
           '<div class="sale-product-body"><div class="sale-product-name">'+esc(m.name)+'</div>'+
           '<div class="sale-product-bottom"><b style="color:var(--g2);white-space:nowrap">'+money(m.price)+'</b>'+
-          '<div class="sale-qty"><button type="button" onclick="newOrderChangeQty('+Number(m.id)+',-1)">−</button><b>'+qty+'</b>'+
+          '<div class="sale-qty"><button type="button" onclick="newOrderChangeQty('+Number(m.id)+',-1)">−</button><input class="qty-manual" type="number" min="0" max="99" value="'+qty+'" onchange="setNewOrderQty('+Number(m.id)+',this.value)" aria-label="Miqdor">'+
           '<button type="button" class="plus" onclick="newOrderChangeQty('+Number(m.id)+',1)">+</button></div></div></div></article>';
       }).join('') : '<div class="sale-empty">Bu bo‘limda hozircha mahsulot yo‘q</div>';
       renderNewOrderItems();
+    }
+
+    function setNewOrderQty(menuId, value) {
+      const raw = String(value).trim();
+      if (!/^\\d+$/.test(raw)) { renderNewOrderMenu(); return; }
+      const qty = Math.max(0, Math.min(99, Number(raw)));
+      const item = newOrderItems.find(x => Number(x.menuId) === Number(menuId));
+      if (qty > 0) {
+        if (item) item.qty = qty;
+        else newOrderItems.push({menuId:Number(menuId),qty});
+      } else newOrderItems = newOrderItems.filter(x => Number(x.menuId) !== Number(menuId));
+      renderNewOrderMenu();
     }
 
     function newOrderChangeQty(menuId, delta) {
@@ -886,7 +909,7 @@
       $('newOrderItems').innerHTML=newOrderItems.map((x)=> {
         const m=DATA.menu.find(z=>Number(z.id)===Number(x.menuId));
         return m ? '<div class="sale-cart-row"><span>'+esc(m.name)+' × '+x.qty+'<small style="display:block;color:#c7bba9">'+money(m.price*x.qty)+'</small></span>'+
-          '<div class="sale-qty"><button onclick="newOrderChangeQty('+Number(m.id)+',-1)">−</button><b>'+x.qty+'</b><button class="plus" onclick="newOrderChangeQty('+Number(m.id)+',1)">+</button></div></div>' : '';
+          '<div class="sale-qty"><button onclick="newOrderChangeQty('+Number(m.id)+',-1)">−</button><input class="qty-manual" type="number" min="0" max="99" value="'+x.qty+'" onchange="setNewOrderQty('+Number(m.id)+',this.value)" aria-label="Miqdor"><button class="plus" onclick="newOrderChangeQty('+Number(m.id)+',1)">+</button></div></div>' : '';
       }).join('')||'<p class="empty">Menyudan mahsulot tanlang</p>';
       $('newOrderTotal').textContent=money(newOrderItems.reduce((a,x)=>{const m=DATA.menu.find(z=>Number(z.id)===Number(x.menuId));return a+(m?m.price*x.qty:0)},0));
     }
@@ -949,18 +972,35 @@
       if (!editState) return;
       const oldRows = editState.originalItems.map((item,index) =>
         '<div class="edit-row"><div><b>' + esc(item.name) + '</b><div style="font-size:12px;color:#c7bba9">' + money(item.price) + ' · ' + money(Number(item.price)*item.qty) + '</div></div>' +
-        '<div class="edit-qty"><button onclick="changeExistingQty(' + index + ',-1)">−</button><b>' + item.qty + '</b><button onclick="changeExistingQty(' + index + ',1)">＋</button></div>' +
+        '<div class="edit-qty"><button onclick="changeExistingQty(' + index + ',-1)">−</button><input class="qty-manual" type="number" min="0" max="99" value="' + item.qty + '" onchange="setExistingQty(' + index + ',this.value)" aria-label="Miqdor"><button onclick="changeExistingQty(' + index + ',1)">＋</button></div>' +
         '<button class="btn dark edit-remove" style="padding:7px 10px" onclick="removeExistingItem(' + index + ')">O‘chirish</button></div>'
       ).join('');
       const addRows = editState.additions.map((item,index) => {
         const m = DATA.menu.find(x => Number(x.id) === Number(item.menuId));
         if (!m) return '';
         return '<div class="edit-row"><div><b>' + esc(m.name) + '</b><div style="font-size:12px;color:#c7bba9">' + money(m.price) + ' · ' + money(Number(m.price)*item.qty) + ' <span style="color:#54e56c">(Yangi)</span></div></div>' +
-          '<div class="edit-qty"><button onclick="changeAdditionQty(' + index + ',-1)">−</button><b>' + item.qty + '</b><button onclick="changeAdditionQty(' + index + ',1)">＋</button></div>' +
+          '<div class="edit-qty"><button onclick="changeAdditionQty(' + index + ',-1)">−</button><input class="qty-manual" type="number" min="0" max="99" value="' + item.qty + '" onchange="setAdditionQty(' + index + ',this.value)" aria-label="Miqdor"><button onclick="changeAdditionQty(' + index + ',1)">＋</button></div>' +
           '<button class="btn dark edit-remove" style="padding:7px 10px" onclick="changeAdditionQty(' + index + ',-' + item.qty + ')">O‘chirish</button></div>';
       }).join('');
       $('editItems').innerHTML = oldRows + addRows || '<p class="empty">Mahsulot tanlanmagan</p>';
       $('editTotal').textContent = money(editTotal());
+    }
+
+    function setExistingQty(index, value) {
+      if (!editState || !editState.originalItems[index]) return;
+      const raw = String(value).trim();
+      if (!/^\\d+$/.test(raw)) return renderEdit();
+      editState.originalItems[index].qty = Math.max(0, Math.min(99, Number(raw)));
+      renderEdit();
+    }
+
+    function setAdditionQty(index, value) {
+      if (!editState || !editState.additions[index]) return;
+      const raw = String(value).trim();
+      if (!/^\\d+$/.test(raw)) return renderEdit();
+      editState.additions[index].qty = Math.max(0, Math.min(99, Number(raw)));
+      editState.additions = editState.additions.filter(x => x.qty > 0);
+      renderEdit();
     }
 
     function changeExistingQty(index,delta) {
@@ -996,10 +1036,24 @@
         return '<article class="sale-product cashier-edit-simple-product">'+
           '<div class="sale-product-body"><div class="sale-product-name">'+esc(m.name)+'</div>'+
           '<div class="sale-product-bottom"><b style="color:var(--g2);white-space:nowrap">'+money(m.price)+'</b>'+
-          '<div class="sale-qty"><button type="button" onclick="changeEditMenuQty('+Number(m.id)+',-1)">−</button><b>'+qty+'</b>'+
+          '<div class="sale-qty"><button type="button" onclick="changeEditMenuQty('+Number(m.id)+',-1)">−</button><input class="qty-manual" type="number" min="0" max="99" value="'+qty+'" onchange="setEditMenuQty('+Number(m.id)+',this.value)" aria-label="Miqdor">'+
           '<button type="button" class="plus" onclick="changeEditMenuQty('+Number(m.id)+',1)">+</button></div></div></div></article>';
       }).join('') || '<div class="sale-empty">Bu bo‘limda mahsulot yo‘q</div>';
     }
+    function setEditMenuQty(menuId, value) {
+      if (!editState) return;
+      const raw = String(value).trim();
+      if (!/^\\d+$/.test(raw)) { renderEditMenu(); return; }
+      const qty = Math.max(0, Math.min(99, Number(raw)));
+      let item = editState.additions.find(x => Number(x.menuId) === Number(menuId));
+      if (qty > 0) {
+        if (item) item.qty = qty;
+        else editState.additions.push({menuId:Number(menuId),qty});
+      } else editState.additions = editState.additions.filter(x => Number(x.menuId) !== Number(menuId));
+      renderEditMenu();
+      renderEdit();
+    }
+
     function changeEditMenuQty(menuId,delta) {
       if (!editState) return;
       const menu = DATA.menu.find(x => Number(x.id) === Number(menuId));
