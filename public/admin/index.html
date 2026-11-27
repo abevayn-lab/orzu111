@@ -225,7 +225,9 @@
 
     const f = n => Number(n || 0).toLocaleString('uz-UZ') + " so'm";
     const isTakeawayOrder = o => ['с собой','собой','saboy','soboy','takeaway'].includes(String(o?.table || '').trim().toLowerCase());
-    const orderSubtotal = o => (o?.items || []).reduce((sum,item) => sum + Number(item.price || 0) * Number(item.qty || 0), 0);
+    const itemAtkazQty = item => (item?.atkazEntries || []).reduce((sum, entry) => sum + Math.max(0, Number(entry.qty || 0)), 0);
+    const itemSaleQty = item => Math.max(0, Number(item?.qty || 0) - itemAtkazQty(item));
+    const orderSubtotal = o => (o?.items || []).reduce((sum,item) => sum + Number(item.price || 0) * itemSaleQty(item), 0);
     const orderGrandTotal = o => {
       const subtotal = orderSubtotal(o);
       const service = (isTakeawayOrder(o) || o?.serviceFeeRemoved) ? 0 : Math.floor(subtotal * 0.05 / 100) * 100;
@@ -295,6 +297,7 @@
         ['＋', 'Menyu', 2],
         ['♙', 'Ofitsiantlar', 3],
         ['▤', 'Statistika', 4],
+        ['↩', 'Atkazlar', 7],
         ['▦', 'Stol QR', 5],
         ['☷', 'Bo‘limlar', 6]
       ];
@@ -305,7 +308,7 @@
         </button>
       `).join('');
 
-      const views = [home, orders, menu, waiters, stats, tableQrs, categories];
+      const views = [home, orders, menu, waiters, stats, tableQrs, categories, atkazs];
       try {
         app.innerHTML = views[tab] ? views[tab]() : home();
       } catch (e) {
@@ -383,11 +386,39 @@
               o.id,
               o.table,
               o.waiterName || '—',
-              f(o.total),
+              f(orderGrandTotal(o)),
               `<span class="badge ${o.status}">${o.status}</span>`,
               new Date(o.time).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' })
             ])
           ) : '<p style="text-align:center;color:#c0b5a3;padding:20px">Buyurtmalar mavjud emas</p>'}
+        </div>
+      `;
+    }
+
+    function atkazs() {
+      const historyRows = Array.isArray(D.history) ? D.history : [];
+      const rows = [];
+      historyRows.forEach(order => (order.items || []).forEach(item => {
+        (item.atkazEntries || []).forEach(entry => rows.push({
+          order, item, entry
+        }));
+      }));
+      rows.sort((a,b) => Number(b.entry.at || 0) - Number(a.entry.at || 0));
+      const total = rows.reduce((sum,row) => sum + Number(row.entry.price || row.item.price || 0) * Number(row.entry.qty || 0), 0);
+      const qty = rows.reduce((sum,row) => sum + Number(row.entry.qty || 0), 0);
+      return `
+        <div class="stat">
+          <h2 class="gold" style="margin-top:0">Atkazlar tarixi</h2>
+          <div class="home-stats">
+            <div class="home-stat"><span>Atkaz qilingan mahsulot</span><b>${qty} ta</b></div>
+            <div class="home-stat"><span>Atkaz summasi</span><b style="font-size:16px">${f(total)}</b></div>
+            <div class="home-stat"><span>Atkaz holatlari</span><b>${rows.length} ta</b></div>
+          </div>
+          ${rows.length ? tbl(['Vaqt','Buyurtma','Stol','Mahsulot','Soni','Summa','Kassir'], rows.map(({order,item,entry}) => [
+            new Date(Number(entry.at || 0)).toLocaleString('uz-UZ'),
+            '#'+order.id, order.table, item.name, Number(entry.qty||0)+' ta',
+            f(Number(entry.price || item.price || 0)*Number(entry.qty||0)), entry.by || 'Kassir'
+          ])) : '<p style="text-align:center;color:#c0b5a3;padding:20px">Hozircha atkaz yo‘q</p>'}
         </div>
       `;
     }
@@ -738,7 +769,7 @@
       const paid = all.filter(o => o.status === 'paid');
       const pending = all.filter(o => o.status !== 'paid');
       const totalSum = paid.reduce((n, o) => n + orderGrandTotal(o), 0);
-      const soldQty = paid.reduce((n, o) => n + (o.items || []).reduce((q, item) => q + Number(item.qty || 0), 0), 0);
+      const soldQty = paid.reduce((n, o) => n + (o.items || []).reduce((q, item) => q + itemSaleQty(item), 0), 0);
       const average = paid.length ? Math.round(totalSum / paid.length) : 0;
       const byDish = {};
       const byWaiter = {};
@@ -747,8 +778,8 @@
         (o.items || []).forEach(item => {
           const key = String(item.name || 'Noma’lum');
           if (!byDish[key]) byDish[key] = { qty: 0, sum: 0 };
-          byDish[key].qty += Number(item.qty || 0);
-          byDish[key].sum += Number(item.qty || 0) * Number(item.price || 0);
+          byDish[key].qty += itemSaleQty(item);
+          byDish[key].sum += itemSaleQty(item) * Number(item.price || 0);
         });
         const waiter = String(o.waiterName || 'Noma’lum');
         if (!byWaiter[waiter]) byWaiter[waiter] = { count: 0, sum: 0 };
@@ -765,7 +796,7 @@
       const topDishes = Object.entries(byDish).sort((a,b) => b[1].qty-a[1].qty).slice(0,10);
       const categoryTotals = {}, dishTotalsByCategory = {};
       paid.forEach(o => (o.items || []).forEach(item => {
-        const qty=Number(item.qty||0), matched=(D.menu||[]).find(m=>String(m.name).trim().toLowerCase()===String(item.name||'').trim().toLowerCase());
+        const qty=itemSaleQty(item), matched=(D.menu||[]).find(m=>String(m.name).trim().toLowerCase()===String(item.name||'').trim().toLowerCase());
         const catName=D.cats[matched?Number(matched.cat):-1]||'Boshqa / menyudan o‘chirilgan';
         categoryTotals[catName]=(categoryTotals[catName]||0)+qty;
         if(!dishTotalsByCategory[catName])dishTotalsByCategory[catName]={};
