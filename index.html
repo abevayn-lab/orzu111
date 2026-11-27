@@ -282,14 +282,27 @@
       }
     }
 
+    // Bar kategoriyasini mijoz QR menyusidan butunlay yashirish.
+    function isBarCategory(index) {
+      const name = String(C[index] ?? '').toLocaleLowerCase('uz-UZ');
+      return name.includes('bar') || name.includes('бар');
+    }
+
+    function firstCustomerCategory() {
+      const index = C.findIndex((_, i) => !isBarCategory(i));
+      return index >= 0 ? index : 0;
+    }
+
     function tabs() {
-      tb.innerHTML = C.map((c, i) => `
+      if (isBarCategory(cat)) cat = firstCustomerCategory();
+      tb.innerHTML = C.map((c, i) => isBarCategory(i) ? '' : `
         <button class="tab ${i === cat ? 'on' : ''}" onclick="cat=${i};tabs();show()">${esc(c)}</button>
       `).join('');
     }
 
     function show() {
-      const items = M.filter(m => m.cat === cat);
+      if (isBarCategory(cat)) cat = firstCustomerCategory();
+      const items = M.filter(m => Number(m.cat) === Number(cat));
       if (!items.length) {
         g.innerHTML = '<p style="text-align:center;color:#b9a875;padding:30px 10px;grid-column:1/-1">Bu bo‘limda hozircha taom yo‘q</p>';
         return;
