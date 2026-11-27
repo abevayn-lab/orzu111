@@ -188,10 +188,11 @@ function makeShiftReportReceipt(report) {
     line('SMENA: KUNLIK HISOBOT'),
     line(rule),
     line(pad('KORSATKICH',20) + right('CHEKLAR',8) + right('SUMMA',14)),
-    line(pad('Jami',20) + right(summary.orders || 0,8) + right(amount(summary.total),14)),
+    line(pad('Jami cheklar',20) + right(summary.orders || 0,8) + right(amount(summary.total),14)),
     line(rule),
-    line('SKIDKI / NATSENKI'),
-    line(pad('Ustama avtomatik',28) + right(summary.markupOrders || 0,5) + right(amount(summary.markup),9)),
+    line(pad('KASSA — STOLLAR',28) + right(amount(summary.tableSubtotal ?? summary.subtotal),14)),
+    line(pad('Ustama 5% (stollar)',28) + right(summary.markupOrders || 0,5) + right(amount(summary.markup),9)),
+    ...(Number(summary.takeawaySubtotal || 0) > 0 ? [line(pad('SABOY SAVDOSI',28) + right(amount(summary.takeawaySubtotal),14))] : []),
     line(rule),
     line('OCHIRISHLAR'),
     line(summary.deletionsTracked ? 'Qayd etilgan o‘chirishlar: ' + (summary.deletions || 0) : 'O‘chirishlar: tizimda qayd etilmaydi'),
@@ -204,7 +205,7 @@ function makeShiftReportReceipt(report) {
   out.push(
     line(rule),
     Buffer.from([0x1b,0x45,0x01]),
-    line(pad('VSEGO:',28) + right(amount(summary.total),14)),
+    line(pad('JAMI TUSHUM:',28) + right(amount(summary.total),14)),
     Buffer.from([0x1b,0x45,0x00]),
     line(rule),
     line('OPLATA PO VIDAM:')
