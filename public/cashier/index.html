@@ -357,9 +357,11 @@
     /* Compact + Zakaz menu */
     .new-order-panel{width:min(820px,94vw);max-height:86vh;padding:16px;overflow-y:auto}
     .new-order-heading{margin-bottom:8px;padding:4px 0;top:-16px}
-    #newOrderCategories{display:flex;gap:7px;overflow-x:auto;padding:2px 0 8px;margin:6px 0 9px;scrollbar-width:thin}
-    #newOrderCategories .sale-cat{min-height:42px;min-width:max-content;padding:5px 9px;gap:6px;border-radius:10px;font-size:12px}
-    #newOrderCategories .sale-cat img{width:30px;height:30px;flex-basis:30px;border-radius:7px}
+    /* Yangi zakaz: bo‘limlar 6 tadan ikki qator bo‘lib ko‘rinsin */
+    #newOrderCategories{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:7px;padding:2px 0 8px;margin:6px 0 9px;overflow:visible}
+    #newOrderCategories .sale-cat{min-width:0;width:100%;min-height:58px;padding:5px 4px;gap:5px;border-radius:8px;font-size:11px;justify-content:center;flex-direction:column;text-align:center;white-space:normal}
+    #newOrderCategories .sale-cat img{width:30px;height:30px;flex:0 0 30px;border-radius:7px}
+    @media(max-width:600px){#newOrderCategories{grid-template-columns:repeat(3,minmax(0,1fr))}}
     #newOrderProducts{grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:8px}
     #newOrderProducts .sale-product{display:grid;grid-template-columns:66px minmax(0,1fr);min-height:76px;border-radius:11px}
     #newOrderProducts .cashier-simple-product{display:block;min-height:0;padding:10px 12px;border-radius:10px}
