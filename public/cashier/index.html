@@ -671,7 +671,7 @@
 
     function setSaleQty(id, value) {
       const raw = String(value).trim();
-      if (!/^\\d+$/.test(raw)) return renderSale();
+      if (!/^\d+$/.test(raw)) return renderSale();
       const next = Math.max(0, Math.min(99, Number(raw)));
       if (next) saleCart[id] = next; else delete saleCart[id];
       renderSale();
@@ -886,7 +886,7 @@
 
     function setNewOrderQty(menuId, value) {
       const raw = String(value).trim();
-      if (!/^\\d+$/.test(raw)) { renderNewOrderMenu(); return; }
+      if (!/^\d+$/.test(raw)) { renderNewOrderMenu(); return; }
       const qty = Math.max(0, Math.min(99, Number(raw)));
       const item = newOrderItems.find(x => Number(x.menuId) === Number(menuId));
       if (qty > 0) {
@@ -989,7 +989,7 @@
     function setExistingQty(index, value) {
       if (!editState || !editState.originalItems[index]) return;
       const raw = String(value).trim();
-      if (!/^\\d+$/.test(raw)) return renderEdit();
+      if (!/^\d+$/.test(raw)) return renderEdit();
       editState.originalItems[index].qty = Math.max(0, Math.min(99, Number(raw)));
       renderEdit();
     }
@@ -997,7 +997,7 @@
     function setAdditionQty(index, value) {
       if (!editState || !editState.additions[index]) return;
       const raw = String(value).trim();
-      if (!/^\\d+$/.test(raw)) return renderEdit();
+      if (!/^\d+$/.test(raw)) return renderEdit();
       editState.additions[index].qty = Math.max(0, Math.min(99, Number(raw)));
       editState.additions = editState.additions.filter(x => x.qty > 0);
       renderEdit();
@@ -1043,7 +1043,7 @@
     function setEditMenuQty(menuId, value) {
       if (!editState) return;
       const raw = String(value).trim();
-      if (!/^\\d+$/.test(raw)) { renderEditMenu(); return; }
+      if (!/^\d+$/.test(raw)) { renderEditMenu(); return; }
       const qty = Math.max(0, Math.min(99, Number(raw)));
       let item = editState.additions.find(x => Number(x.menuId) === Number(menuId));
       if (qty > 0) {
