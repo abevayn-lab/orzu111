@@ -330,6 +330,7 @@
     let knownNewIds = new Set();
     let firstOrdersLoad = true;
     let soundContext = null;
+    let waiterPushConfigured = false;
     let MENU = [], MCATS = [], SEL = {}, TGT = 0;
 
     const f = n => Number(n || 0).toLocaleString('uz-UZ') + " so'm";
@@ -385,7 +386,7 @@
     document.addEventListener('keydown', unlockSound, { once: false });
 
     async function enableWaiterPush() {
-      if (!W || !('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) return;
+      if (waiterPushConfigured || !W || !('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) return;
       if (Notification.permission !== 'granted') return;
       try {
         const keyResponse = await fetch('/api/push/public-key', { cache: 'no-store' });
@@ -401,6 +402,8 @@
           method: 'POST', headers: waiterHeaders(), body: JSON.stringify({ subscription: subscription.toJSON() })
         });
         if (!response.ok) { const data = await response.json().catch(() => ({})); throw new Error(data.error || 'Push obunasi saqlanmadi'); }
+        waiterPushConfigured = true;
+        toast('🔔 Yangi zakas bildirishnomalari yoqildi');
         console.info('ORZU ofitsiant push bildirishnomasi yoqildi');
       } catch (error) { console.warn('Ofitsiant push sozlamasi:', error); }
     }
