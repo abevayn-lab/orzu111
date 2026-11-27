@@ -385,6 +385,20 @@ function secretHeaderMatches(q: Request, headerName: string, expected: string) {
   catch { return false; }
 }
 
+function isTakeawayOrder(order: Pick<Order, 'table'>): boolean {
+  return ['с собой', 'собой', 'saboy', 'soboy', 'takeaway'].includes(String(order.table || '').trim().toLowerCase());
+}
+function orderSubtotal(order: Pick<Order, 'items'>): number {
+  return (order.items || []).reduce((sum, item) => sum + Number(item.price || 0) * Number(item.qty || 0), 0);
+}
+function orderServiceFee(order: Pick<Order, 'table' | 'items' | 'serviceFeeRemoved'>): number {
+  const subtotal = orderSubtotal(order);
+  return isTakeawayOrder(order) || order.serviceFeeRemoved ? 0 : Math.floor(subtotal * 0.05 / 100) * 100;
+}
+function orderGrandTotal(order: Pick<Order, 'table' | 'items' | 'serviceFeeRemoved'>): number {
+  return orderSubtotal(order) + orderServiceFee(order);
+}
+
 function orderTimeMs(order: { time?: unknown }): number {
   const raw = order?.time;
   if (typeof raw === 'number' && Number.isFinite(raw)) return raw;
@@ -1257,10 +1271,14 @@ app.post('/api/cashier/close-day', cashier, async (_q, s) => {
   const currentOrders = O.list.filter(o => Number(o.time || 0) >= closedAt);
   const pending = currentOrders.filter(o => o.status !== 'paid');
   const paid = currentOrders.filter(o => o.status === 'paid');
+  const subtotal = paid.reduce((sum, order) => sum + orderSubtotal(order), 0);
+  const serviceFee = paid.reduce((sum, order) => sum + orderServiceFee(order), 0);
   const summary = {
     orders: paid.length,
     pending: pending.length,
-    total: paid.reduce((sum, o) => sum + Number(o.total || 0), 0)
+    subtotal,
+    serviceFee,
+    total: subtotal + serviceFee
   };
   O.dayClosures.cashier = Date.now();
   if (!await save('orders')) {
@@ -1305,16 +1323,13 @@ app.post('/api/admin/print-daily-report', adm, async (q: Request, s: Response) =
   if (!paid.length) {
     return s.status(404).json({ error: 'Tanlangan kunda to‘langan buyurtmalar topilmadi' });
   }
-  const isTakeaway = (o: Order) =>
-    ['с собой', 'собой', 'saboy', 'soboy', 'takeaway'].includes(String(o.table || '').trim().toLowerCase());
   const categoryMaps = new Map<string, Map<string, { code: number; name: string; price: number; qty: number; total: number }>>();
   let subtotal = 0;
   let serviceFee = 0;
   for (const order of paid) {
-    const orderSum = (order.items || []).reduce((sum, item) =>
-      sum + Number(item.price || 0) * Number(item.qty || 0), 0);
+    const orderSum = orderSubtotal(order);
     subtotal += orderSum;
-    if (!isTakeaway(order) && !order.serviceFeeRemoved) serviceFee += Math.floor(orderSum * 0.05 / 100) * 100;
+    serviceFee += orderServiceFee(order);
     for (const item of order.items || []) {
       const name = String(item.name || 'Mahsulot');
       const price = Number(item.price || 0);
@@ -1381,21 +1396,16 @@ app.post('/api/admin/print-shift-report', adm, async (q: Request, s: Response) =
   if (!paid.length) {
     return s.status(404).json({ error: 'Tanlangan kunda to‘langan buyurtmalar topilmadi' });
   }
-  const isTakeaway = (o: Order) =>
-    ['с собой', 'собой', 'saboy', 'soboy', 'takeaway'].includes(String(o.table || '').trim().toLowerCase());
   const categoryTotals = new Map<string, number>();
   const payments = new Map<string, { count: number; total: number }>();
   let subtotal = 0;
   let markup = 0;
   let markupOrders = 0;
   for (const order of paid) {
-    const orderSum = (order.items || []).reduce((sum, item) =>
-      sum + Number(item.price || 0) * Number(item.qty || 0), 0);
+    const orderSum = orderSubtotal(order);
     subtotal += orderSum;
-    if (!isTakeaway(order) && !order.serviceFeeRemoved) {
-      const fee = Math.floor(orderSum * 0.05 / 100) * 100;
-      if (fee > 0) { markup += fee; markupOrders += 1; }
-    }
+    const fee = orderServiceFee(order);
+    if (fee > 0) { markup += fee; markupOrders += 1; }
     for (const item of order.items || []) {
       const menuItem = CFG.menu.find(m => String(m.name || '').trim().toLowerCase() === String(item.name || '').trim().toLowerCase());
       const catIndex = menuItem && Number.isInteger(Number(menuItem.cat)) ? Number(menuItem.cat) : -1;
@@ -1405,7 +1415,7 @@ app.post('/api/admin/print-shift-report', adm, async (q: Request, s: Response) =
     const method = String(order.paymentMethod || 'Naqd').trim() || 'Naqd';
     const payment = payments.get(method) || { count: 0, total: 0 };
     payment.count += 1;
-    payment.total += orderSum + ((isTakeaway(order) || order.serviceFeeRemoved) ? 0 : Math.floor(orderSum * 0.05 / 100) * 100);
+    payment.total += orderGrandTotal(order);
     payments.set(method, payment);
   }
   const categories = [...categoryTotals.entries()].sort((a, b) => {
