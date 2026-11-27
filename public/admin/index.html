@@ -264,13 +264,27 @@
         <div class="stat" style="max-width:380px;margin:30px auto">
           <h2 class="gold" style="margin-top:0">Admin kirishi</h2>
           <p style="color:#d8c29d;font-size:13px">Admin parolini kiriting:</p>
-          <input id="pw" type="password" placeholder="Admin paroli" autofocus>
-          <button class="btn" style="width:100%;margin-top:8px" onclick="doLogin()">Kirish</button>
+          <div style="position:relative;margin:8px 0 0">
+            <input id="pw" name="admin-password" type="password" placeholder="Admin paroli" autocomplete="new-password" autocapitalize="off" spellcheck="false" style="padding-right:52px;margin:0" autofocus>
+            <button id="togglePw" type="button" aria-label="Parolni ko‘rsatish" onclick="toggleAdminPassword()" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);width:40px;height:38px;border:0;background:transparent;color:#ffe39a;font-size:21px;cursor:pointer">◉</button>
+          </div>
+          <button class="btn" style="width:100%;margin-top:12px" onclick="doLogin()">Kirish</button>
         </div>
       `;
       document.getElementById('pw')?.addEventListener('keydown', e => {
         if (e.key === 'Enter') doLogin();
       });
+    }
+
+    function toggleAdminPassword() {
+      const input = document.getElementById('pw');
+      const button = document.getElementById('togglePw');
+      if (!input || !button) return;
+      const show = input.type === 'password';
+      input.type = show ? 'text' : 'password';
+      button.textContent = show ? '◎' : '◉';
+      button.setAttribute('aria-label', show ? 'Parolni yashirish' : 'Parolni ko‘rsatish');
+      input.focus();
     }
 
     function doLogin() {
