@@ -1224,14 +1224,29 @@ app.post('/api/cashier/atkaz', cashier, async (q: Request, s: Response) => {
   if (qty > remaining) return s.status(400).json({ error: 'Atkaz miqdori qolgan mahsulot sonidan oshmasin. Qoldiq: ' + remaining });
   const previousEntries = item.atkazEntries ? item.atkazEntries.slice() : undefined;
   const previousTotal = order.total;
+  const previousPrintJobs = Array.isArray(O.printJobs) ? JSON.parse(JSON.stringify(O.printJobs)) : undefined;
   item.atkazEntries = [...(item.atkazEntries || []), {
     qty, price: Number(item.price || 0), at: Date.now(), by: String(q.body.cashierName || 'Kassir').slice(0, 60)
   }];
   order.total = orderSubtotal(order);
+
+  // If this order is still waiting in the local printer queue, correct that
+  // pending receipt too so it cannot print the pre-atkaz quantity.
+  for (const job of O.printJobs || []) {
+    if (String(job.order?.id) !== String(order.id)) continue;
+    const queuedOrder = job.order as Order;
+    queuedOrder.items = order.items
+      .map(current => ({ ...current, qty: itemSaleQty(current) }))
+      .filter(current => current.qty > 0);
+    queuedOrder.total = orderGrandTotal(order);
+  }
+
   if (!await save('orders')) {
     if (previousEntries === undefined) delete item.atkazEntries;
     else item.atkazEntries = previousEntries;
     order.total = previousTotal;
+    if (previousPrintJobs === undefined) delete O.printJobs;
+    else O.printJobs = previousPrintJobs;
     saveLocally();
     return s.status(500).json({ error: 'Atkaz bazaga saqlanmadi. Qayta urinib ko‘ring.' });
   }
