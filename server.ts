@@ -748,7 +748,9 @@ app.get('/api/station/orders', stationAuth, (q, s) => {
   const closedAt = Number(O.dayClosures.stations[station] || 0);
   const orders = O.list.filter(o => orderTimeMs(o) >= closedAt).slice().sort((a,b) => orderTimeMs(a) - orderTimeMs(b)).map(o => ({
     id: o.id, table: o.table, waiterName: o.waiterName, time: o.time, status: o.status,
-    items: o.items.map((item, index) => ({ item, index })).filter(x => stationForOrderItem(x.item) === station).map(x => ({ index: x.index, name: x.item.name, img: x.item.img || '', qty: x.item.qty, kitchenStatus: x.item.kitchenStatus || 'new' }))
+    items: o.items.map((item, index) => ({ item, index }))
+      .filter(x => stationForOrderItem(x.item) === station && itemSaleQty(x.item) > 0)
+      .map(x => ({ index: x.index, name: x.item.name, img: x.item.img || '', qty: itemSaleQty(x.item), kitchenStatus: x.item.kitchenStatus || 'new' }))
   })).filter(o => o.items.length);
   s.json({ station, orders });
 });
@@ -796,10 +798,11 @@ app.get('/api/kitchen/orders', kitchen, (_q, s) => {
       id: o.id, table: o.table, waiterName: o.waiterName, time: o.time,
       status: o.status,
       items: o.items.map((item, index) => ({
-        index, name: item.name, img: item.img || '', qty: item.qty,
+        index, name: item.name, img: item.img || '', qty: itemSaleQty(item),
         kitchenStatus: item.kitchenStatus || 'new'
-      }))
-    }));
+      })).filter(item => item.qty > 0)
+    }))
+    .filter(o => o.items.length > 0);
   s.json({ orders });
 });
 
@@ -1011,10 +1014,16 @@ app.post('/api/cashier/print', cashier, async (q: Request, s: Response) => {
   if (!o) return s.status(404).json({ error: 'Buyurtma topilmadi' });
 
   if (!Array.isArray(O.printJobs)) O.printJobs = [];
+  const printOrder = JSON.parse(JSON.stringify(o)) as Order;
+  printOrder.items = printOrder.items
+    .map(item => ({ ...item, qty: itemSaleQty(item) }))
+    .filter(item => item.qty > 0);
+  if (!printOrder.items.length) return s.status(400).json({ error: 'Chekda chiqariladigan mahsulot qolmagan: hammasi atkaz qilingan.' });
+  printOrder.total = orderGrandTotal(printOrder);
   const job: PrintJob = {
     id: String(Date.now()) + '-' + Math.random().toString(36).slice(2, 8),
     printerIp: String(q.body.printerIp || O.cashierSettings?.printerIp || '192.168.1.51'),
-    order: JSON.parse(JSON.stringify(o))
+    order: printOrder
   };
   O.printJobs.push(job);
   const persisted = await save('orders');
